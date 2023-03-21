@@ -164,27 +164,27 @@ class MainClass(object):
             ],
             resize_keyboard=True, one_time_keyboard=True)
         # first
-        a_kb =  [telegram.KeyboardButton('0 unacceptable')] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 undesirable')]
+        a_kb =  [telegram.KeyboardButton('0 unacceptable')] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton('volver')]
         print('LEN A =', len(a_kb))
         a_kb = [ a_kb[0:6], a_kb[6:15], a_kb[15:] ]
         self.a_kb = telegram.ReplyKeyboardMarkup(a_kb, resize_keyboard=True, one_time_keyboard=True)
         # second
-        b_kb =  [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 acceptable')]
+        b_kb =  [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton('volver')]
         print('LEN B =', len(b_kb))
         b_kb = [ b_kb[0:6], b_kb[6:15], b_kb[15:] ]
         self.b_kb = telegram.ReplyKeyboardMarkup(b_kb, resize_keyboard=True, one_time_keyboard=True)
         # third
-        c_kb =  [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton(str(x)) for x in range(41, 60)] + [telegram.KeyboardButton('60 good')]
+        c_kb =  [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton(str(x)) for x in range(41, 60)] + [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton('volver')]
         c_kb = [ c_kb[0:6], c_kb[6:15], c_kb[15:] ]
         self.c_kb = telegram.ReplyKeyboardMarkup(c_kb, resize_keyboard=True, one_time_keyboard=True)
         # forth
         #d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 very good')]
-        d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 desirable')]
+        d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton('volver')]
         d_kb = [ d_kb[0:6], d_kb[6:15], d_kb[15:] ]
         self.d_kb = telegram.ReplyKeyboardMarkup(d_kb, resize_keyboard=True, one_time_keyboard=True)
         # fifth
         #e_kb =  [telegram.KeyboardButton('80 very good')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')]
-        e_kb =  [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')]
+        e_kb =  [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')] + [telegram.KeyboardButton('volver')]
         e_kb = [ e_kb[0:6], e_kb[6:15], e_kb[15:] ]
         self.e_kb = telegram.ReplyKeyboardMarkup(e_kb, resize_keyboard=True, one_time_keyboard=True)
 
@@ -350,26 +350,26 @@ class MainClass(object):
         user = self.get_user_data(u)
         print('UID', user.uid)
         print('TEXTO A ENVIAR= ', text)
-        if str(user.uid) in config['admin']['userid2']:
+        if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
             print('IGNORE KEYBOARD BY UID')
             kb = None
         ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
         print('-------TERMINA REPLY----------------')
 
-    def set_keyboard(self, u, c, kb):
+    def set_keyboard(self, u, c, user, text, kb):
         print('-------DEF SET KEYBOARD----------------')
         print('Tipo de la u = ', type(u))
         #user = self.get_user_data(u)
-        user = u
         print('UID', user.uid)
-        if str(user.uid) in config['admin']['userid2']:
+        if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
             print('Llega a ser un admin')
             print('IGNORE KEYBOARD BY UID')
             return
         print('Llega a ser un no admin')
         #ret = c.bot.send_message(chat_id=u.effective_chat.id, text='got it', reply_markup=kb)
         #ret = c.bot.send_message(chat_id=user.uid, text='got it', reply_markup=kb)
-        ret = c.bot.send_message(chat_id=user.uid, text=tr('choose_value', user), reply_markup=kb)
+        #ret = c.bot.send_message(chat_id=user.uid, text=tr('choose_value', user), reply_markup=kb)
+        ret = c.bot.send_message(chat_id=user.uid, text=text, reply_markup=kb)
         print('-------TERMINA SET KEYBOARD----------------')
 
     def start(self, u, c):
@@ -501,7 +501,7 @@ class MainClass(object):
                 text_return_q1=self.text_process(u)
                 print('El dia de mi muerte x2')
                 print('TEXT RETURN = ', text_return_q1)
-                if self.process_q1(text_return_q1, c, user):
+                if self.process_q1(u, c, user, text_return_q1):
                     print('bagunsaaaa')
                     score_data.append('Q1: '+text_return_q1)
                     self.send_q1_confirmation(u, c, user)
@@ -516,14 +516,15 @@ class MainClass(object):
             print('----------------TEXT_ECHO STATE EXPECT_Q2----------------')
             try:
                 text_return_q2=self.text_process(u)
-                if self.process_q2(text_return_q2, c, user):
+                print('TEXT RETURN = ', text_return_q2)
+                if self.process_q2(u, c, user, text_return_q2):
                     score_data.append('Q2: '+text_return_q2)
                     self.send_q2_confirmation(u, c, user)
                     self.send_new_sample(u, c, user)
                     self.send_q1_question(u, c, user)
                     user.state = ChatState.EXPECT_Q1
                 else:
-                    print('not process_q1')
+                    print('not process_q2')
             except:
                 self.reply(u, c, tr('notvalid', user))
                 print('holiiiii2')
@@ -569,7 +570,7 @@ class MainClass(object):
             #Q1 confirmation message sent, and user is asked for Q2 score
             try:
                 voice_return_q1=self.voice_process(u)
-                if self.process_q1(voice_return_q1, c, user):
+                if self.process_q1(u, c, user, voice_return_q1):
                     score_data.append('Q1: '+voice_return_q1)
                     self.send_q1_confirmation(u, c, user)
                     self.send_q2_question(u, c, user)
@@ -584,14 +585,14 @@ class MainClass(object):
             #Q2 confirmation message sent, and user is sent new video clip and asked for Q1 score
             try:
                 voice_return_q2=self.voice_process(u)
-                if self.process_q2(voice_return_q2, c, user):
+                if self.process_q2(u, c, user, voice_return_q2):
                     score_data.append('Q2: '+voice_return_q2)
                     self.send_q2_confirmation(u, c, user)
                     self.send_new_sample(u, c, user)
                     self.send_q1_question(u, c, user)
                     user.state = ChatState.EXPECT_Q1
                 else:
-                    print('not process_q1')
+                    print('not process_q2')
             except:
                 self.reply(u, c, tr('notvalid', user))
                 print('holiiiii4')
@@ -682,25 +683,28 @@ class MainClass(object):
         #Return text score between 0-100
         return voice_integer_number
 
-    def process_q1(self, first, c, user):
+    def process_q1(self, u, c, user, first):
         print('FIRST = ', first)
         print('-------DEF PROCESS_Q1------')
         if first == 'unacceptable':
             print('Entra unacceptable')
-            self.set_keyboard(user, c, self.a_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.a_kb)
             print('Adios unacceptable')
             return False
         elif first == 'undesirable':
-            self.set_keyboard(user, c, self.b_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.b_kb)
             return False
         elif first == 'acceptable':
-            self.set_keyboard(user, c, self.c_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.c_kb)
             return False
         elif first == 'good':
-            self.set_keyboard(user, c, self.d_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.d_kb)
             return False
         elif first == 'desirable':
-            self.set_keyboard(user, c, self.e_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.e_kb)
+            return False
+        elif first == 'volver':
+            self.set_keyboard(u, c, user, tr('q1question', user), self.main_kb)
             return False
         #elif first == 'very':
             #try:
@@ -727,29 +731,33 @@ class MainClass(object):
             raise Exception('invalid input'+first)
         return True
 
-    def process_q2(self, first, c, user):
+    def process_q2(self, u, c, user, first):
         print('-------DEF PROCESS_Q2------')
         if first == 'unacceptable':
-            self.set_keyboard(user, c, self.a_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.a_kb)
             return False
         elif first == 'undesirable':
-            self.set_keyboard(user, c, self.b_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.b_kb)
             return False
         elif first == 'acceptable':
-            self.set_keyboard(user, c, self.c_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.c_kb)
             return False
         elif first == 'good':
-            self.set_keyboard(user, c, self.d_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.d_kb)
             return False
         elif first == 'desirable':
-            self.set_keyboard(user, c, self.e_kb)
+            self.set_keyboard(u, c, user, tr('choose_value', user), self.e_kb)
+            return False
+        elif first == 'volver':
+            self.set_keyboard(u, c, user, tr('q2question', user), self.main_kb)
             return False
 
         if len(first) > 3:
             raise Exception('invalid input'+first)
         try:
             q2 = int(first)
-            if q2 < 0 or q2 > 100 or q2 > user.current_q1():
+            #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
+            if q2 < 0 or q2 > 100:
                 raise Exception('invalid input'+first)
             user.add_q2_for_current_sequence(q2)
         except Exception:
