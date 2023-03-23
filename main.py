@@ -26,7 +26,7 @@ file = 'config.ini'
 config = ConfigParser()
 config.read(file)
 
-#Obtain userid data from config
+#Obtain admin userid data from config
 admin_list_count = list(config['admin'])
 admin_list = []
 x = 0
@@ -49,6 +49,8 @@ DEBUG = True
 score_data = []
 current_video_id = ''
 ############################################################################
+# obtener los videos de la carpeta de videos
+############################################################################
 def get_video_files():
     from os import listdir
     from os.path import isfile, join
@@ -60,7 +62,10 @@ def get_video_files():
     for (dirpath, dirnames, filenames) in walk(mypath):
         f.extend([mypath+x for x in filenames if x.endswith('.mp4')])
     return f
+    
+############################################################################
 
+############################################################################
 #Validates string representation of integer is:
 #an integer between 0 - 100
 #returns integer if valid
@@ -88,10 +93,11 @@ def text_to_integer(text_number, number_words={}):
 
 ############################################################################
 
+############################################################################
 class MainClass(object):
     def __init__(self):
         super(MainClass).__init__()
-
+        #Cargando la base de datos
         try:
             self.data = self.load_database()
         except:
@@ -119,11 +125,14 @@ class MainClass(object):
 
         #Obtain bot token from config
         token = config['bot']['token']
+        
+        #Crear el updater el cual reaccionará cada vez que haya un cambio en los mensajes que se envíen por parte del usuario
         self.updater = Updater(token, use_context=True) # REAL
 
         self.dispatcher = self.updater.dispatcher
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
+        #Añadir comandos al dispatcher utilizando CommandHandler
         self.dispatcher.add_handler(CommandHandler('start',   self.start))
         self.dispatcher.add_handler(CommandHandler('flush',   self.flush_command))
         self.dispatcher.add_handler(CommandHandler('delete',  self.delete_command))
@@ -137,25 +146,18 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('backup',    self.user_backup_command))
         self.dispatcher.add_handler(CommandHandler('get',     self.get_command))
         self.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
-        #Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros. En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
+        #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         self.dispatcher.add_handler(MessageHandler(Filters.voice & (~Filters.command), self.voice_echo))
-
+        
+        #Se crea el keyboard (lang_kb) para elegir idioma usando ReplyKeyboardMarkup.
         self.lang_kb = telegram.ReplyKeyboardMarkup(
             [[telegram.KeyboardButton('english')], [telegram.KeyboardButton('castellano')]],
             resize_keyboard=True, one_time_keyboard=True)
 
+        #Se crea el keyboard (main_kb) para elegir una escala a la hora de responder a las preguntas usando ReplyKeyboardMarkup.
         self.main_kb = telegram.ReplyKeyboardMarkup(
             [
-                #[telegram.KeyboardButton('unacceptable - undesirable'), telegram.KeyboardButton('undesirable - acceptable')],
-                #[telegram.KeyboardButton('acceptable - good'), telegram.KeyboardButton('good - very good')],
-                #[telegram.KeyboardButton('very good - perfect'), telegram.KeyboardButton('/start')],
-                #
-                #[telegram.KeyboardButton('/ignore'), telegram.KeyboardButton('/help')],
-                #[telegram.KeyboardButton('unacceptable'), telegram.KeyboardButton('undesirable')],
-                #[telegram.KeyboardButton('acceptable'), telegram.KeyboardButton('good')],
-                #[telegram.KeyboardButton('very good'), telegram.KeyboardButton('perfect')],
-                #
                 [telegram.KeyboardButton('unacceptable - undesirable'), telegram.KeyboardButton('undesirable - acceptable')],
                 [telegram.KeyboardButton('acceptable - good'), telegram.KeyboardButton('good - desirable')],
                 [telegram.KeyboardButton('desirable - perfect')],
@@ -163,34 +165,39 @@ class MainClass(object):
 
             ],
             resize_keyboard=True, one_time_keyboard=True)
-        # first
-        a_kb =  [telegram.KeyboardButton('0 unacceptable')] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton('volver')]
+            
+        #Se crea el keyboard (a_kb) de la primera escala (unacceptable - undesirable) usando ReplyKeyboardMarkup.
+        a_kb =  [telegram.KeyboardButton('0 unacceptable')] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton('<--')]
         print('LEN A =', len(a_kb))
         a_kb = [ a_kb[0:6], a_kb[6:15], a_kb[15:] ]
         self.a_kb = telegram.ReplyKeyboardMarkup(a_kb, resize_keyboard=True, one_time_keyboard=True)
-        # second
-        b_kb =  [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton('volver')]
+        
+        #Se crea el keyboard (b_kb) de la segunda escala (undesirable - acceptable) usando ReplyKeyboardMarkup.
+        b_kb =  [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton('<--')]
         print('LEN B =', len(b_kb))
         b_kb = [ b_kb[0:6], b_kb[6:15], b_kb[15:] ]
         self.b_kb = telegram.ReplyKeyboardMarkup(b_kb, resize_keyboard=True, one_time_keyboard=True)
-        # third
-        c_kb =  [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton(str(x)) for x in range(41, 60)] + [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton('volver')]
+        
+        #Se crea el keyboard (c_kb) de la tercera escala (acceptable - good) usando ReplyKeyboardMarkup.
+        c_kb =  [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton(str(x)) for x in range(41, 60)] + [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton('<--')]
         c_kb = [ c_kb[0:6], c_kb[6:15], c_kb[15:] ]
         self.c_kb = telegram.ReplyKeyboardMarkup(c_kb, resize_keyboard=True, one_time_keyboard=True)
-        # forth
-        #d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 very good')]
-        d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton('volver')]
+        
+        #Se crea el keyboard (d_kb) de la cuarta escala (good - desirable) usando ReplyKeyboardMarkup.
+        d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton('<--')]
         d_kb = [ d_kb[0:6], d_kb[6:15], d_kb[15:] ]
         self.d_kb = telegram.ReplyKeyboardMarkup(d_kb, resize_keyboard=True, one_time_keyboard=True)
-        # fifth
-        #e_kb =  [telegram.KeyboardButton('80 very good')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')]
-        e_kb =  [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')] + [telegram.KeyboardButton('volver')]
+        
+        #Se crea el keyboard (e_kb) de la quinta escala (desirable - perfect) usando ReplyKeyboardMarkup.
+        e_kb =  [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')] + [telegram.KeyboardButton('<--')]
         e_kb = [ e_kb[0:6], e_kb[6:15], e_kb[15:] ]
         self.e_kb = telegram.ReplyKeyboardMarkup(e_kb, resize_keyboard=True, one_time_keyboard=True)
 
+    # Método que iniciará nuestro bot y que hará dejarlo en escucha
     def idle(self):
         self.updater.start_polling()
 
+    # Método del comando /scan
     def scan_command(self, u=None, c=None):
         if u is not None:
             user = self.get_user_data(u)
@@ -204,6 +211,7 @@ class MainClass(object):
         if u is not None:
             self.reply(u, c, str(len(self.data['files']['regular'])))
 
+    # Método del comando /len
     def len_command(self, u, c):
         user = self.get_user_data(u)
         if user.state == ChatState.EXPECT_LANGUAGE:
@@ -212,6 +220,7 @@ class MainClass(object):
             l = len(user)
             self.reply(u, c, str(l))
 
+    # Método del comando /help
     def help_command(self, u, c):
         user = self.get_user_data(u)
         if user.state == ChatState.EXPECT_LANGUAGE:
@@ -219,6 +228,7 @@ class MainClass(object):
         else:
             self.reply(u, c, tr('help', user))
 
+    # Método del comando /restart
     def restart_command(self, u, c):
         user = self.get_user_data(u)
         if user.state == ChatState.EXPECT_LANGUAGE:
@@ -237,6 +247,7 @@ class MainClass(object):
         # os.exit(0)
         os.system('kill -9 %d' % os.getpid())
 
+    # Método del comando /get
     def get_command(self, u, c):
         user = self.get_user_data(u)
         if user.uid not in admins:
@@ -249,6 +260,7 @@ class MainClass(object):
                 zip.write(f)
         c.bot.send_document(chat_id=u.message.chat_id, document=open('doc.zip', 'rb'))
 
+    # Método del comando /count
     def count_command(self, u, c):
         user = self.get_user_data(u)
         if user.uid not in admins:
@@ -261,6 +273,7 @@ class MainClass(object):
             total += len(v.input)
         self.reply(u, c, str(total)+' ('+str(l)+')')
 
+    # Método del comando /print
     def print_command(self, u=None, c=None):
         if u is not None:
             user = self.get_user_data(u)
@@ -272,6 +285,7 @@ class MainClass(object):
             ret += str(k) + ' ' + str(self.data['users'][k].uname) + ' ' + str(len(v.input)) + '\n'
         self.reply(u, c, ret)
 
+    # Método del comando /setmain
     def setmain_command(self, u, c):
         user = self.get_user_data(u)
         if user.uid not in admins:
@@ -306,25 +320,29 @@ class MainClass(object):
         print('SET BASIC')
         self.data['files']['basic'] = self.data['files']['main'][0:set_size]
 
+    # Método para cargar la base de datos
     def load_database(self):
         with open('bot.db', 'rb') as fd:
             return pickle.load(fd)
 
+    # Método para limpiar la base de datos
     def flush_database(self):
         print('Flushing')
         with open('bot.db', 'wb') as fd:
             pickle.dump(self.data, fd)
 
+    # Método para saber si se ha limpiado la base de datos transcurrido un tiempo
     def check_flush(self):
         delta_seconds = time.time() - self.last_save
         if delta_seconds > 3600:
             self.last_save = time.time()
             self.flush_database()
 
+    # Método para obtener los datos del usuario del updater, como su id y su username, y guardarlos en una clase UserInfo
     def get_user_data(self, src):
         print('-------DEF GET USER DATA----------------')
         uname = None
-        print('Que tipo esssssssssssss = ', str(type(src))) ###VAMOS POR ACAAAAA
+        print('Que tipo esssssssssssss = ', str(type(src)))
         if type(src) == telegram.update.Update:
             uid   = src['message']['chat']['id']
             uname = src['message']['chat']['username']
@@ -345,6 +363,7 @@ class MainClass(object):
         print('-------TERMINA GET USER DATA----------------')
         return ret
 
+    # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def reply(self, u, c, text, kb=None):
         print('-------DEF REPLY----------------')
         user = self.get_user_data(u)
@@ -356,6 +375,7 @@ class MainClass(object):
         ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
         print('-------TERMINA REPLY----------------')
 
+    # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def set_keyboard(self, u, c, user, text, kb):
         print('-------DEF SET KEYBOARD----------------')
         print('Tipo de la u = ', type(u))
@@ -372,6 +392,7 @@ class MainClass(object):
         ret = c.bot.send_message(chat_id=user.uid, text=text, reply_markup=kb)
         print('-------TERMINA SET KEYBOARD----------------')
 
+    # Método del comando start
     def start(self, u, c):
         print('-----------------------START comenzar-----------------------------')
         print('información update = ',u)
@@ -389,12 +410,14 @@ class MainClass(object):
         self.reply(u, c, tr('lang', user), kb=self.lang_kb)
         print('--------------------START termina----------------------------')
 
+    # Método del comando flush
     def flush_command(self, u, c):
         user = self.get_user_data(u)
         if user.uid in admins:
             self.flush_database()
             self.reply(u, c, tr('done', user))
 
+    # Método del comando delete
     def delete_command(self, u, c):
         user = self.get_user_data(u)
         if user.state == ChatState.EXPECT_LANGUAGE:
@@ -411,6 +434,7 @@ class MainClass(object):
                 self.reply(u, c, tr('cannotdelete', user))
             self.check_flush()
 
+    # Método del comando ignore
     def ignore_command(self, u, c):
         print('----------DEF IGNORE_COMMAND---------')
         user = self.get_user_data(u)
@@ -471,6 +495,7 @@ class MainClass(object):
                     file.close()
         print('----------TERMINA FILE_SCORE_USER---------')
 
+    # Método que gestiona las acciones que se realizarán cuando el usuario envíe un mensaje que no sea un comando
     def text_echo(self, u, c):
         print('-------------------------COMIENZA LLAMADA A TEXT_ECHO-------------------------')
         user = self.get_user_data(u)
@@ -608,6 +633,7 @@ class MainClass(object):
             score_data.clear()
         self.check_flush()
 
+    # Método encargado de configurar el idioma elegido por el usuario
     def process_language(self, u, c, user):
         print('------COMIENZA PROCESS_LANGUAGE-----')
         inp = u.message.text.lower().strip()
@@ -683,6 +709,7 @@ class MainClass(object):
         #Return text score between 0-100
         return voice_integer_number
 
+    # Método que procesa la evaluación de la primera pregunta
     def process_q1(self, u, c, user, first):
         print('FIRST = ', first)
         print('-------DEF PROCESS_Q1------')
@@ -703,7 +730,7 @@ class MainClass(object):
         elif first == 'desirable':
             self.set_keyboard(u, c, user, tr('choose_value', user), self.e_kb)
             return False
-        elif first == 'volver':
+        elif first == '<--':
             self.set_keyboard(u, c, user, tr('q1question', user), self.main_kb)
             return False
         #elif first == 'very':
@@ -731,6 +758,7 @@ class MainClass(object):
             raise Exception('invalid input'+first)
         return True
 
+    # Método que procesa la evaluación de la segunda pregunta
     def process_q2(self, u, c, user, first):
         print('-------DEF PROCESS_Q2------')
         if first == 'unacceptable':
@@ -748,7 +776,7 @@ class MainClass(object):
         elif first == 'desirable':
             self.set_keyboard(u, c, user, tr('choose_value', user), self.e_kb)
             return False
-        elif first == 'volver':
+        elif first == '<--':
             self.set_keyboard(u, c, user, tr('q2question', user), self.main_kb)
             return False
 
@@ -765,6 +793,7 @@ class MainClass(object):
             raise Exception('invalid input'+first)
         return True
 
+    # Método que se encarga de enviar un nuevo ejemplo
     def send_new_sample(self, u, c, user):
         print('Send new sample')
         if user.uid in main_users:
@@ -867,24 +896,25 @@ class MainClass(object):
                 return self.send_new_sample_main(u, c, user, change=True)
         raise Exception('132131frwejf8jd38')
 
+    # Método que se encarga de enviar la primera pregunta al usuario
     def send_q1_question(self, u, c, user):
         print('--------DEF SEND_Q1_QUESTION----------')
         self.reply(u, c, tr('q1question', user), kb=self.main_kb)
         print('--------TERMINA SEND_Q1_QUESTION----------')
 
-
+    # Método que se encarga de enviar la confirmación de la primera pregunta al usuario
     def send_q1_confirmation(self, u, c, user):
         print('--------DEF SEND_Q1_CONFIRMATION----------')
         self.reply(u, c, tr('q1confirmation', user))
         print('--------TERMINA SEND_Q1_CONFIRMATION----------')
 
-
+    # Método que se encarga de enviar la segunda pregunta al usuario
     def send_q2_question(self, u, c, user):
         print('--------DEF SEND_Q2_QUESTION----------')
         self.reply(u, c, tr('q2question', user), kb=self.main_kb)
         print('--------TERMINA SEND_Q2_QUESTION----------')
 
-
+    # Método que se encarga de enviar la confirmación de la segunda pregunta al usuario
     def send_q2_confirmation(self, u, c, user):
         print('--------DEF SEND_Q2_CONFIRMATION----------')
         self.reply(u, c, tr('q2confirmation', user))
