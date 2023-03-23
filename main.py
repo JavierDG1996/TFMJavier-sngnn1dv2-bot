@@ -161,7 +161,7 @@ class MainClass(object):
                 [telegram.KeyboardButton('unacceptable - undesirable'), telegram.KeyboardButton('undesirable - acceptable')],
                 [telegram.KeyboardButton('acceptable - good'), telegram.KeyboardButton('good - desirable')],
                 [telegram.KeyboardButton('desirable - perfect')],
-                [telegram.KeyboardButton('/ignore'), telegram.KeyboardButton('/help'), telegram.KeyboardButton('/start')],
+                #[telegram.KeyboardButton('/ignore'), telegram.KeyboardButton('/help'), telegram.KeyboardButton('/len'), telegram.KeyboardButton('/backup'), telegram.KeyboardButton('/start')],
 
             ],
             resize_keyboard=True, one_time_keyboard=True)
@@ -196,7 +196,40 @@ class MainClass(object):
     # Método que iniciará nuestro bot y que hará dejarlo en escucha
     def idle(self):
         self.updater.start_polling()
+        
+    def setbasic(self, set_size):
+        print('SET BASIC')
+        self.data['files']['basic'] = self.data['files']['main'][0:set_size]
 
+
+#############################################################################################################
+#############                         Database                     ##########################################
+#############################################################################################################
+
+    # Método para cargar la base de datos
+    def load_database(self):
+        with open('bot.db', 'rb') as fd:
+            return pickle.load(fd)
+
+    # Método para limpiar la base de datos
+    def flush_database(self):
+        print('Flushing')
+        with open('bot.db', 'wb') as fd:
+            pickle.dump(self.data, fd)
+
+    # Método para saber si se ha limpiado la base de datos transcurrido un tiempo
+    def check_flush(self):
+        delta_seconds = time.time() - self.last_save
+        if delta_seconds > 3600:
+            self.last_save = time.time()
+            self.flush_database()
+            
+########################################################################## FIN Database ########################################
+
+
+#############################################################################################################
+#############                         Comandos                     ##########################################
+#############################################################################################################
     # Método del comando /scan
     def scan_command(self, u=None, c=None):
         if u is not None:
@@ -315,83 +348,7 @@ class MainClass(object):
                     break
                 else:
                     self.data['files']['main'].append(i)
-
-    def setbasic(self, set_size):
-        print('SET BASIC')
-        self.data['files']['basic'] = self.data['files']['main'][0:set_size]
-
-    # Método para cargar la base de datos
-    def load_database(self):
-        with open('bot.db', 'rb') as fd:
-            return pickle.load(fd)
-
-    # Método para limpiar la base de datos
-    def flush_database(self):
-        print('Flushing')
-        with open('bot.db', 'wb') as fd:
-            pickle.dump(self.data, fd)
-
-    # Método para saber si se ha limpiado la base de datos transcurrido un tiempo
-    def check_flush(self):
-        delta_seconds = time.time() - self.last_save
-        if delta_seconds > 3600:
-            self.last_save = time.time()
-            self.flush_database()
-
-    # Método para obtener los datos del usuario del updater, como su id y su username, y guardarlos en una clase UserInfo
-    def get_user_data(self, src):
-        print('-------DEF GET USER DATA----------------')
-        uname = None
-        print('Que tipo esssssssssssss = ', str(type(src)))
-        if type(src) == telegram.update.Update:
-            uid   = src['message']['chat']['id']
-            uname = src['message']['chat']['username']
-            if uname is None:
-                uname = src['message']['chat']['first_name'] + ' ' + src['message']['chat']['last_name']
-        elif type(src) == int:
-            uid = src
-        else:
-            raise(str(type(src)))
-
-        try:
-            ret = self.data['users'][uid]
-            if ret.uname is None:
-                ret.uname = uname
-        except Exception:
-            ret = UserInfo(uid, uname)
-            self.data['users'][uid] = ret
-        print('-------TERMINA GET USER DATA----------------')
-        return ret
-
-    # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
-    def reply(self, u, c, text, kb=None):
-        print('-------DEF REPLY----------------')
-        user = self.get_user_data(u)
-        print('UID', user.uid)
-        print('TEXTO A ENVIAR= ', text)
-        if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
-            print('IGNORE KEYBOARD BY UID')
-            kb = None
-        ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
-        print('-------TERMINA REPLY----------------')
-
-    # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
-    def set_keyboard(self, u, c, user, text, kb):
-        print('-------DEF SET KEYBOARD----------------')
-        print('Tipo de la u = ', type(u))
-        #user = self.get_user_data(u)
-        print('UID', user.uid)
-        if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
-            print('Llega a ser un admin')
-            print('IGNORE KEYBOARD BY UID')
-            return
-        print('Llega a ser un no admin')
-        #ret = c.bot.send_message(chat_id=u.effective_chat.id, text='got it', reply_markup=kb)
-        #ret = c.bot.send_message(chat_id=user.uid, text='got it', reply_markup=kb)
-        #ret = c.bot.send_message(chat_id=user.uid, text=tr('choose_value', user), reply_markup=kb)
-        ret = c.bot.send_message(chat_id=user.uid, text=text, reply_markup=kb)
-        print('-------TERMINA SET KEYBOARD----------------')
-
+    
     # Método del comando start
     def start(self, u, c):
         print('-----------------------START comenzar-----------------------------')
@@ -471,6 +428,8 @@ class MainClass(object):
                 os.remove(str(user.uid)+"_backup_data_file.txt")
             else:
                 self.reply(u, c, tr('cannot_backup', user))
+                
+########################################################################## FIN comandos ########################################
 
     #creates file with user's scoring data
     def file_score_user(self, userid, score_list):
@@ -495,6 +454,117 @@ class MainClass(object):
                     file.close()
         print('----------TERMINA FILE_SCORE_USER---------')
 
+
+    # Método para obtener los datos del usuario del updater, como su id y su username, y guardarlos en una clase UserInfo
+    def get_user_data(self, src):
+        print('-------DEF GET USER DATA----------------')
+        uname = None
+        print('Que tipo esssssssssssss = ', str(type(src)))
+        if type(src) == telegram.update.Update:
+            uid   = src['message']['chat']['id']
+            uname = src['message']['chat']['username']
+            if uname is None:
+                uname = src['message']['chat']['first_name'] + ' ' + src['message']['chat']['last_name']
+        elif type(src) == int:
+            uid = src
+        else:
+            raise(str(type(src)))
+
+        try:
+            ret = self.data['users'][uid]
+            if ret.uname is None:
+                ret.uname = uname
+        except Exception:
+            ret = UserInfo(uid, uname)
+            self.data['users'][uid] = ret
+        print('-------TERMINA GET USER DATA----------------')
+        return ret
+
+    # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
+    def reply(self, u, c, text, kb=None):
+        print('-------DEF REPLY----------------')
+        #user = self.get_user_data(u)
+        #print('UID', user.uid)
+        
+        print('UID', u.effective_chat.id)
+        print('TEXTO A ENVIAR = ', text)
+        #if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
+        #    print('IGNORE KEYBOARD BY UID')
+        #    kb = None
+        ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
+        print('-------TERMINA REPLY----------------')
+
+    # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
+    def set_keyboard(self, u, c, text, kb=None):
+        print('-------DEF SET KEYBOARD----------------')
+        #print('Tipo de la u = ', type(u))
+        #user = self.get_user_data(u)
+        #print('UID', user.uid)
+        
+        print('UID', u.effective_chat.id)
+        print('TEXTO A ENVIAR = ', text)
+        #if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
+        #    print('Llega a ser un admin')
+        #    print('IGNORE KEYBOARD BY UID')
+        #    return
+        
+        #ret = c.bot.send_message(chat_id=u.effective_chat.id, text='got it', reply_markup=kb)
+        #ret = c.bot.send_message(chat_id=user.uid, text='got it', reply_markup=kb)
+        #ret = c.bot.send_message(chat_id=user.uid, text=tr('choose_value', user), reply_markup=kb)
+        ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
+        print('-------TERMINA SET KEYBOARD----------------')
+
+    # Método que se encarga de enviar la primera pregunta al usuario
+    def send_q1_question(self, u, c, user):
+        print('--------DEF SEND_Q1_QUESTION----------')
+        self.reply(u, c, tr('q1question', user))
+        self.reply(u, c, tr('give_me_score', user), kb=self.main_kb)
+        print('--------TERMINA SEND_Q1_QUESTION----------')
+
+    # Método que se encarga de enviar la confirmación de la primera pregunta al usuario
+    def send_q1_confirmation(self, u, c, user):
+        print('--------DEF SEND_Q1_CONFIRMATION----------')
+        self.reply(u, c, tr('q1confirmation', user))
+        print('--------TERMINA SEND_Q1_CONFIRMATION----------')
+
+    # Método que se encarga de enviar la segunda pregunta al usuario
+    def send_q2_question(self, u, c, user):
+        print('--------DEF SEND_Q2_QUESTION----------')
+        self.reply(u, c, tr('q2question', user))
+        self.reply(u, c, tr('give_me_score', user), kb=self.main_kb)
+        print('--------TERMINA SEND_Q2_QUESTION----------')
+
+    # Método que se encarga de enviar la confirmación de la segunda pregunta al usuario
+    def send_q2_confirmation(self, u, c, user):
+        print('--------DEF SEND_Q2_CONFIRMATION----------')
+        self.reply(u, c, tr('q2confirmation', user))
+        print('--------TERMINA SEND_Q2_CONFIRMATION----------')
+
+    # Método que se encarga de enviar la tercera pregunta al usuario
+    def send_q3_question(self, u, c, user):
+        print('--------DEF SEND_Q3_QUESTION----------')
+        self.reply(u, c, tr('q3question', user))
+        self.reply(u, c, tr('give_me_score', user), kb=self.main_kb)
+        print('--------TERMINA SEND_Q3_QUESTION----------')
+
+    # Método que se encarga de enviar la confirmación de la tercera pregunta al usuario
+    def send_q3_confirmation(self, u, c, user):
+        print('--------DEF SEND_Q3_CONFIRMATION----------')
+        self.reply(u, c, tr('q3confirmation', user))
+        print('--------TERMINA SEND_Q3_CONFIRMATION----------')
+        
+    # Mensaje de gracias
+    def send_thanks(self, u, c, user):
+        self.reply(u, c, tr('arigato', user))
+        
+    # Mensaje de bienvenida
+    def send_welcome(self, u, c, user):
+        self.reply(u, c, tr('welcome', user))
+
+#############################################################################################################
+#############                         MessageHandler Methods                      ##############################
+#############################################################################################################
+
     # Método que gestiona las acciones que se realizarán cuando el usuario envíe un mensaje que no sea un comando
     def text_echo(self, u, c):
         print('-------------------------COMIENZA LLAMADA A TEXT_ECHO-------------------------')
@@ -505,6 +575,7 @@ class MainClass(object):
         elif user.state == ChatState.EXPECT_LANGUAGE:
             print('------------TEXT_ECHO STATE EXPECT_LANGUAGE---------------')
             if self.process_language(u, c, user):
+                self.send_welcome(u, c, user)
                 self.send_new_sample(u, c, user)
                 self.send_q1_question(u, c, user)
                 user.state = ChatState.EXPECT_Q1
@@ -522,12 +593,10 @@ class MainClass(object):
                 score_data.append(video_id)
                 score_data.append(user.uid)
             try:
-                print('El dia de mi muerte')
                 text_return_q1=self.text_process(u)
-                print('El dia de mi muerte x2')
                 print('TEXT RETURN = ', text_return_q1)
-                if self.process_q1(u, c, user, text_return_q1):
-                    print('bagunsaaaa')
+                #if self.process_q1(u, c, user, text_return_q1):
+                if self.process_question(u, c, user, text_return_q1):
                     score_data.append('Q1: '+text_return_q1)
                     self.send_q1_confirmation(u, c, user)
                     self.send_q2_question(u, c, user)
@@ -542,17 +611,36 @@ class MainClass(object):
             try:
                 text_return_q2=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q2)
-                if self.process_q2(u, c, user, text_return_q2):
+                #if self.process_q2(u, c, user, text_return_q2):
+                if self.process_question(u, c, user, text_return_q2):
                     score_data.append('Q2: '+text_return_q2)
                     self.send_q2_confirmation(u, c, user)
-                    self.send_new_sample(u, c, user)
-                    self.send_q1_question(u, c, user)
-                    user.state = ChatState.EXPECT_Q1
+                    #self.send_new_sample(u, c, user)
+                    self.send_q3_question(u, c, user)
+                    user.state = ChatState.EXPECT_Q3
                 else:
                     print('not process_q2')
             except:
                 self.reply(u, c, tr('notvalid', user))
                 print('holiiiii2')
+        elif user.state == ChatState.EXPECT_Q3:
+            print('----------------TEXT_ECHO STATE EXPECT_Q3----------------')
+            try:
+                text_return_q3=self.text_process(u)
+                print('TEXT RETURN = ', text_return_q3)
+                #if self.process_q3(u, c, user, text_return_q3):
+                if self.process_question(u, c, user, text_return_q3):
+                    score_data.append('Q3: '+text_return_q3)
+                    self.send_q3_confirmation(u, c, user)
+                    self.send_thanks(u, c, user)
+                    self.send_new_sample(u, c, user)
+                    self.send_q1_question(u, c, user)
+                    user.state = ChatState.EXPECT_Q1
+                else:
+                    print('not process_q3')
+            except:
+                self.reply(u, c, tr('notvalid', user))
+                print('holiiiii3')
         else:
             c.bot.send_message(chat_id=u.effective_chat.id, text="It seems that the chat is not initialised. We'll restart...")
             self.start(u, c)
@@ -633,6 +721,11 @@ class MainClass(object):
             score_data.clear()
         self.check_flush()
 
+
+#############################################################################################################
+#############                         Process Methods                      ##################################
+#############################################################################################################
+
     # Método encargado de configurar el idioma elegido por el usuario
     def process_language(self, u, c, user):
         print('------COMIENZA PROCESS_LANGUAGE-----')
@@ -649,7 +742,8 @@ class MainClass(object):
             print('__'+inp+'__')
             print('------TERMINA PROCESS_LANGUAGE-----')
             return False
-
+    
+    # Este método sirve para obtener el mensaje de texto enviado por el usuario y obtener la primera palabra. Esto se utiliza en text_echo a la hora de procesar el valor de las preguntas en un rango o en un número
     def text_process(self, u):
         print('------COMIENZA TEXT_PROCESS-----')
         text = u.message.text.lower().strip()
@@ -709,29 +803,35 @@ class MainClass(object):
         #Return text score between 0-100
         return voice_integer_number
 
-    # Método que procesa la evaluación de la primera pregunta
-    def process_q1(self, u, c, user, first):
+    # Método que procesa los rangos de evaluación si se hubieran pulsado los botones de rango o de <--
+    def process_sequence(self, u, c, user, first):
         print('FIRST = ', first)
-        print('-------DEF PROCESS_Q1------')
+        print('-------DEF PROCESS_SEQUENCE------')
         if first == 'unacceptable':
-            print('Entra unacceptable')
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.a_kb)
-            print('Adios unacceptable')
+            self.set_keyboard(u, c, tr('choose_value', user), self.a_kb)
             return False
         elif first == 'undesirable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.b_kb)
+            self.set_keyboard(u, c, tr('choose_value', user), self.b_kb)
             return False
         elif first == 'acceptable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.c_kb)
+            self.set_keyboard(u, c, tr('choose_value', user), self.c_kb)
             return False
         elif first == 'good':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.d_kb)
+            self.set_keyboard(u, c, tr('choose_value', user), self.d_kb)
             return False
         elif first == 'desirable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.e_kb)
+            self.set_keyboard(u, c, tr('choose_value', user), self.e_kb)
             return False
         elif first == '<--':
-            self.set_keyboard(u, c, user, tr('q1question', user), self.main_kb)
+            if user.state == ChatState.EXPECT_Q1:
+                #self.set_keyboard(u, c, tr('q1question', user), self.main_kb)
+                self.send_q1_question(u, c, user)
+            elif user.state == ChatState.EXPECT_Q2:
+                #self.set_keyboard(u, c, tr('q2question', user), self.main_kb)
+                self.send_q2_question(u, c, user)
+            elif user.state == ChatState.EXPECT_Q3:
+                #self.set_keyboard(u, c, tr('q3question', user), self.main_kb)
+                self.send_q3_question(u, c, user)
             return False
         #elif first == 'very':
             #try:
@@ -741,57 +841,118 @@ class MainClass(object):
             #except Exception as e:
             #    print(e)
             #return False
+        else:
+            return True
+
+#    # Método que procesa la evaluación de la primera pregunta
+#    def process_q1(self, u, c, user, first):
+#        print('FIRST = ', first)
+#        print('-------DEF PROCESS_Q1------')
+#        
+#        if not self.process_sequence(u, c, user, first):
+#            return False
+#
+#        if len(first) > 3:
+#            raise Exception('invalid input'+first)
+#        try:
+#            q1 = int(first)
+#            if q1 < 0 or q1 > 100:
+#                print('Invalid input 2', first)
+#                raise Exception('invalid input'+first)
+#            try:
+#                user.add_q1_for_current_sequence(q1)
+#            except Exception as e:
+#                print(e)
+#        except Exception:
+#            print('Invalid input 3', first)
+#            raise Exception('invalid input'+first)
+#        return True
+
+#    # Método que procesa la evaluación de la segunda pregunta
+#    def process_q2(self, u, c, user, first):
+#        print('-------DEF PROCESS_Q2------')
+#        
+#        if not self.process_sequence(u, c, user, first):
+#            return False
+#
+#        if len(first) > 3:
+#            raise Exception('invalid input'+first)
+#        try:
+#            q2 = int(first)
+#            #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
+#            if q2 < 0 or q2 > 100:
+#                raise Exception('invalid input'+first)
+#            user.add_q2_for_current_sequence(q2)
+#        except Exception:
+#            print('Invalid input 3', first)
+#            raise Exception('invalid input'+first)
+#        return True
+        
+#    # Método que procesa la evaluación de la tercera pregunta
+#    def process_q3(self, u, c, user, first):
+#        print('-------DEF PROCESS_Q3------')
+#
+#        if not self.process_sequence(u, c, user, first):
+#            return False
+#
+#        if len(first) > 3:
+#            raise Exception('invalid input'+first)
+#        try:
+#            q3 = int(first)
+#            #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
+#            if q3 < 0 or q3 > 100:
+#                raise Exception('invalid input'+first)
+#            user.add_q3_for_current_sequence(q3)
+#        except Exception:
+#            print('Invalid input 3', first)
+#            raise Exception('invalid input'+first)
+#        return True
+
+    # Método que procesa la evaluación de una pregunta
+    def process_question(self, u, c, user, first):
+        print('-------DEF PROCESS_QUESTION------')
+
+        if not self.process_sequence(u, c, user, first):
+            return False
 
         if len(first) > 3:
-            raise Exception('invalid input'+first)
+            raise Exception('invalid input'+first)        
+        
         try:
-            q1 = int(first)
-            if q1 < 0 or q1 > 100:
-                print('Invalid input 2', first)
-                raise Exception('invalid input'+first)
-            try:
+            if user.state == ChatState.EXPECT_Q1:
+                
+                q1 = int(first)
+                #if q1 < 0 or q1 > 100:
+                if q1 < 0 or q1 > 100:
+                    raise Exception('invalid input'+first)
                 user.add_q1_for_current_sequence(q1)
-            except Exception as e:
-                print(e)
+                
+            elif user.state == ChatState.EXPECT_Q2:
+                
+                q2 = int(first)
+                #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
+                if q2 < 0 or q2 > 100:
+                    raise Exception('invalid input'+first)
+                user.add_q2_for_current_sequence(q2)
+                
+            elif user.state == ChatState.EXPECT_Q3:
+                
+                q3 = int(first)
+                #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
+                if q3 < 0 or q3 > 100:
+                    raise Exception('invalid input'+first)
+                user.add_q3_for_current_sequence(q3)
+                
         except Exception:
             print('Invalid input 3', first)
             raise Exception('invalid input'+first)
         return True
 
-    # Método que procesa la evaluación de la segunda pregunta
-    def process_q2(self, u, c, user, first):
-        print('-------DEF PROCESS_Q2------')
-        if first == 'unacceptable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.a_kb)
-            return False
-        elif first == 'undesirable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.b_kb)
-            return False
-        elif first == 'acceptable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.c_kb)
-            return False
-        elif first == 'good':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.d_kb)
-            return False
-        elif first == 'desirable':
-            self.set_keyboard(u, c, user, tr('choose_value', user), self.e_kb)
-            return False
-        elif first == '<--':
-            self.set_keyboard(u, c, user, tr('q2question', user), self.main_kb)
-            return False
+######################################    FIN Process methods    ################################################
 
-        if len(first) > 3:
-            raise Exception('invalid input'+first)
-        try:
-            q2 = int(first)
-            #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
-            if q2 < 0 or q2 > 100:
-                raise Exception('invalid input'+first)
-            user.add_q2_for_current_sequence(q2)
-        except Exception:
-            print('Invalid input 3', first)
-            raise Exception('invalid input'+first)
-        return True
+#############################################################################################################
+#############                         Send Sample Methods                      ##############################
+#############################################################################################################
 
     # Método que se encarga de enviar un nuevo ejemplo
     def send_new_sample(self, u, c, user):
@@ -896,29 +1057,7 @@ class MainClass(object):
                 return self.send_new_sample_main(u, c, user, change=True)
         raise Exception('132131frwejf8jd38')
 
-    # Método que se encarga de enviar la primera pregunta al usuario
-    def send_q1_question(self, u, c, user):
-        print('--------DEF SEND_Q1_QUESTION----------')
-        self.reply(u, c, tr('q1question', user), kb=self.main_kb)
-        print('--------TERMINA SEND_Q1_QUESTION----------')
-
-    # Método que se encarga de enviar la confirmación de la primera pregunta al usuario
-    def send_q1_confirmation(self, u, c, user):
-        print('--------DEF SEND_Q1_CONFIRMATION----------')
-        self.reply(u, c, tr('q1confirmation', user))
-        print('--------TERMINA SEND_Q1_CONFIRMATION----------')
-
-    # Método que se encarga de enviar la segunda pregunta al usuario
-    def send_q2_question(self, u, c, user):
-        print('--------DEF SEND_Q2_QUESTION----------')
-        self.reply(u, c, tr('q2question', user), kb=self.main_kb)
-        print('--------TERMINA SEND_Q2_QUESTION----------')
-
-    # Método que se encarga de enviar la confirmación de la segunda pregunta al usuario
-    def send_q2_confirmation(self, u, c, user):
-        print('--------DEF SEND_Q2_CONFIRMATION----------')
-        self.reply(u, c, tr('q2confirmation', user))
-        print('--------TERMINA SEND_Q2_CONFIRMATION----------')
+######################################    FIN Process methods    ################################################
 
 if __name__ == '__main__':
     print('------------------MAIN Aquí empieza----------------------')

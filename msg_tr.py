@@ -11,6 +11,13 @@ def tr(msg, u):
     else:
         Exception("Please select a language")
 
+    if msg == "welcome":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['welcome']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['welcome']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
 
     if msg == "q1question":
         if u.lang == 'en':
@@ -46,7 +53,31 @@ def tr(msg, u):
             return config['dataset_survey_messages_es']['q2_confirmation']
         else:
             Exception('Unknown language "'+u.lang+'"')
+            
+            
+    if msg == "q3question":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['q3_question']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['q3_question']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
+            
+    if msg == "q3confirmation":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['q3_confirmation']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['q3_confirmation']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
 
+    if msg == "give_me_score":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['give_me_score']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['give_me_score']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
 
     if msg == "notvalid":
         if u.lang == 'en':
@@ -119,5 +150,13 @@ def tr(msg, u):
             return config['dataset_survey_messages_en']['choose_value']
         elif u.lang == 'es':
             return config['dataset_survey_messages_es']['choose_value']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
+
+    if msg == "arigato":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['arigato']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['arigato']
         else:
             Exception('Unknown language "'+u.lang+'"')

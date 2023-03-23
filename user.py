@@ -7,6 +7,7 @@ class ChatState(enum.Enum):
     EXPECT_LANGUAGE = enum.auto()
     EXPECT_Q1       = enum.auto()
     EXPECT_Q2       = enum.auto()
+    EXPECT_Q3       = enum.auto()
 
 class UserInfo(object):
     def __init__(self, uid, uname):
@@ -52,15 +53,25 @@ class UserInfo(object):
         try:
             self.input[self.current_sample][0] = q1
         except:
-            self.input[self.current_sample] = [q1, 0, 0]
+            self.input[self.current_sample] = [q1, 0, 0, 0]
 
 
     def add_q2_for_current_sequence(self, q2):
         try:
+            #date_timestamp = datetime.now()
+            #date_timestamp_format = date_timestamp.strftime("%d/%m/%Y - (%H:%M:%S)")
+            self.input[self.current_sample][1] = q2
+            #self.input[self.current_sample][2] = date_timestamp_format
+        except Exception as e:
+            print(e)
+            raise e
+            
+    def add_q3_for_current_sequence(self, q3):
+        try:
             date_timestamp = datetime.now()
             date_timestamp_format = date_timestamp.strftime("%d/%m/%Y - (%H:%M:%S)")
-            self.input[self.current_sample][1] = q2
-            self.input[self.current_sample][2] = date_timestamp_format
+            self.input[self.current_sample][2] = q3
+            self.input[self.current_sample][3] = date_timestamp_format
         except Exception as e:
             print(e)
             raise e
@@ -73,6 +84,9 @@ class UserInfo(object):
 
     def current_q2(self):
         return self.input[self.current_sample][1]
+        
+    def current_q3(self):
+        return self.input[self.current_sample][2]
 
     def __repr__(self):
         s = '<USER '
