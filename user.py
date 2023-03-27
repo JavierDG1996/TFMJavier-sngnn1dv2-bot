@@ -91,11 +91,11 @@ class UserInfo(object):
     def __repr__(self):
         s = '<USER '
         s += str(self.uname) + ' ('
-        s += str(self.uid) + ') '
-        s += str(self.lang) + ' '
-        s += str(self.state) + ' '
-        s += str(self.current_sample) + '\n'
-        s += str('[\n')
+        s += 'UID ' + str(self.uid) + ') '
+        s += 'LANG = ' + str(self.lang) + ', '
+        s += 'STATE = ' + str(self.state) + ', '
+        s += 'CURRENT_SAMPLE = ' + str(self.current_sample) + '\n'
+        s += str('INPUT = [\n')
         for k in self.input:
             s += ' ' + str(k) + ' ' + str(self.input[k]) + ' '
         s += str(']\n')

@@ -118,8 +118,11 @@ class MainClass(object):
         print('READ')
         print('USERS:', self.data['users'])
         print('REGULAR:', self.data['files']['regular'])
+        print('LEN REGULAR:', len(self.data['files']['regular']))
         print('MAIN:', self.data['files']['main'])
+        print('LEN MAIN:', len(self.data['files']['main']))
         print('BASIC:', self.data['files']['basic'])
+        print('LEN BASIC:', len(self.data['files']['basic']))
         print('READ')
         print('READ')
 
@@ -234,12 +237,21 @@ class MainClass(object):
     def scan_command(self, u=None, c=None):
         if u is not None:
             user = self.get_user_data(u)
-            if user.uid not in admins:
+            if str(user.uid) not in admins:
+                self.reply(u, c, tr('access', user))
                 return
 
         all_files = get_video_files()
+        print('SCAN ALL FILES = ', all_files)
+        print('LEN SCAN ALL FILES = ', len(all_files))
         new_files = list( set(all_files) - set(self.data['files']['regular']) )
+        print('SCAN NEW FILES = ', new_files)
+        print('LEN SCAN NEW FILES = ', len(new_files))
+        print('SCAN FILES DATA = ', self.data['files']['regular'])
+        print('LEN SCAN FILES DATA = ', len(self.data['files']['regular']))
         self.data['files']['regular'] += new_files
+        print('SCAN FILES DATA = ', self.data['files']['regular'])
+        print('LEN SCAN FILES DATA = ', len(self.data['files']['regular']))
         random.shuffle(self.data['files']['regular'])
         if u is not None:
             self.reply(u, c, str(len(self.data['files']['regular'])))
@@ -247,8 +259,12 @@ class MainClass(object):
     # Método del comando /len
     def len_command(self, u, c):
         user = self.get_user_data(u)
-        if user.state == ChatState.EXPECT_LANGUAGE:
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, devuelve el número de vídeos evaluados por el usuario
         else:
             l = len(user)
             self.reply(u, c, str(l))
@@ -256,20 +272,29 @@ class MainClass(object):
     # Método del comando /help
     def help_command(self, u, c):
         user = self.get_user_data(u)
-        if user.state == ChatState.EXPECT_LANGUAGE:
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, envía la información de ayuda al usuario
         else:
             self.reply(u, c, tr('help', user))
 
     # Método del comando /restart
     def restart_command(self, u, c):
         user = self.get_user_data(u)
-        if user.state == ChatState.EXPECT_LANGUAGE:
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, envía la información de ayuda al usuario
         else:
-            if user.uid not in admins:
+            if str(user.uid) not in admins:
+                self.reply(u, c, tr('access', user))
                 return
-                threading.Thread(target=self.shutdown).start()
+            threading.Thread(target=self.shutdown).start()
 
     def shutdown(self):
         self.updater.stop()
@@ -280,10 +305,11 @@ class MainClass(object):
         # os.exit(0)
         os.system('kill -9 %d' % os.getpid())
 
-    # Método del comando /get
+    # Método del comando /get --> si el usuario es un admin, el bot le enviará la base de datos (bot.db) en un zip
     def get_command(self, u, c):
         user = self.get_user_data(u)
-        if user.uid not in admins:
+        if str(user.uid) not in admins:
+            self.reply(u, c, tr('access', user))
             return
 
         from zipfile import ZipFile
@@ -293,41 +319,50 @@ class MainClass(object):
                 zip.write(f)
         c.bot.send_document(chat_id=u.message.chat_id, document=open('doc.zip', 'rb'))
 
-    # Método del comando /count
+    # Método del comando /count --> si el usuario es un admin, el bot te envía el número total de vídeos evaluados entre todos los participantes frente al número de vídeos evaluados por el usuario
     def count_command(self, u, c):
         user = self.get_user_data(u)
-        if user.uid not in admins:
+        if str(user.uid) not in admins:
             self.reply(u, c, tr('access', user))
             return
 
         l = len(user)
         total = 0
+        # Los items son del tipo UserInfo, entonces en k se guarda el uid y en v se guarda el uname (los datos de user)
+        # Se va a recorrer la lista de usuarios de la base de datos y se van a sumar todos los vídeos evaluados por cada usuario
         for k, v in self.data['users'].items():
             total += len(v.input)
+        # Se envía el total de vídeos evaluados y, entre paréntesis, los evaluados por ti
         self.reply(u, c, str(total)+' ('+str(l)+')')
 
-    # Método del comando /print
+    # Método del comando /print --> si el usuario es un admin, el bot envía los nombres de todos los participantes y el número de vídeos que han evaluado cada uno
     def print_command(self, u=None, c=None):
         if u is not None:
             user = self.get_user_data(u)
-            if user.uid not in admins:
+            if str(user.uid) not in admins:
+                self.reply(u, c, tr('access', user))
                 return
 
         ret = ''
+        # Los items son del tipo UserInfo, entonces en k se guarda el uid y en v se guarda el uname (los datos de user)
+        # Se va a recorrer la lista de usuarios de la base de datos y se va a obtener la información de cada uno (su uid, su nombre y el número de vídeos evaluados)
         for k, v in self.data['users'].items():
             ret += str(k) + ' ' + str(self.data['users'][k].uname) + ' ' + str(len(v.input)) + '\n'
+        # Se envía el mensaje completo
         self.reply(u, c, ret)
 
     # Método del comando /setmain
     def setmain_command(self, u, c):
         user = self.get_user_data(u)
-        if user.uid not in admins:
+        if str(user.uid) not in admins:
             self.reply(u, c, tr('access', user))
             return
 
         text = u.message.text.split()
         if len(text) != 2:
-            self.reply(u, c, tr('syntax', user))
+            #self.reply(u, c, tr('syntax', user))
+            self.reply(u, c, 'Faltan argumentos')
+            return
 
         text = text[1]
 
@@ -367,19 +402,27 @@ class MainClass(object):
         self.reply(u, c, tr('lang', user), kb=self.lang_kb)
         print('--------------------START termina----------------------------')
 
-    # Método del comando flush
+    # Método del comando flush --> si el usuario es un admin, limpia el pickle de la base de datos
     def flush_command(self, u, c):
         user = self.get_user_data(u)
-        if user.uid in admins:
+        if str(user.uid) in admins:
             self.flush_database()
             self.reply(u, c, tr('done', user))
 
-    # Método del comando delete
+    # Método del comando delete--> El usuario puede eliminar un video que quiera de su input solo con aportar el id del video como segundo argumento
     def delete_command(self, u, c):
         user = self.get_user_data(u)
-        if user.state == ChatState.EXPECT_LANGUAGE:
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, puede eliminar el video que quiera de su input solo con aportar el id del video como segundo argumento
         else:
+            text = u.message.text.split()
+            if len(text) != 2:
+                self.reply(u, c, 'Faltan argumentos')
+                return
             sid = u.message.text.split()[1]
             try:
                 if sid.endswith('D'):
@@ -391,12 +434,16 @@ class MainClass(object):
                 self.reply(u, c, tr('cannotdelete', user))
             self.check_flush()
 
-    # Método del comando ignore
+    # Método del comando ignore --> ignora el vídeo actual y envía otro
     def ignore_command(self, u, c):
         print('----------DEF IGNORE_COMMAND---------')
         user = self.get_user_data(u)
-        if user.state == ChatState.EXPECT_LANGUAGE:
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, elimina el input del vídeo que se estaba evaluando y se envía otro vídeo con las preguntas
         else:
             sid = user.current_sample
             try:
@@ -414,8 +461,12 @@ class MainClass(object):
     def user_backup_command(self, u, c):
         #retrieve user data
         user = self.get_user_data(u)
-        if user.state == ChatState.EXPECT_LANGUAGE:
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, se envía un archivo de texto con el respaldo de la información evaluada
         else:
             #create user backup file by copying saved user _data_file.txt into a _backup_data_file file.
             user_file = str(user.uid)+"_data_file.txt"
