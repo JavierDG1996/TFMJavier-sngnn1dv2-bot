@@ -431,6 +431,10 @@ class MainClass(object):
                 
 ########################################################################## FIN comandos ########################################
 
+#############################################################################################################
+#############         Conseguir cosas del usuario                  ##########################################
+#############################################################################################################
+
     #creates file with user's scoring data
     def file_score_user(self, userid, score_list):
         print('----------DEF FILE_SCORE_USER---------')
@@ -459,7 +463,7 @@ class MainClass(object):
     def get_user_data(self, src):
         print('-------DEF GET USER DATA----------------')
         uname = None
-        print('Que tipo esssssssssssss = ', str(type(src)))
+        # Si el tipo que le llega es Update, se obtiene el id y el username del usuario. Si fuera un entero, el uid sería el propio dato. Si no fuera nada de eso, se lanza una excepción
         if type(src) == telegram.update.Update:
             uid   = src['message']['chat']['id']
             uname = src['message']['chat']['username']
@@ -470,6 +474,7 @@ class MainClass(object):
         else:
             raise(str(type(src)))
 
+        # Se crea un atributo de tipo UserInfo con la uid y el username obtenidos
         try:
             ret = self.data['users'][uid]
             if ret.uname is None:
@@ -479,6 +484,12 @@ class MainClass(object):
             self.data['users'][uid] = ret
         print('-------TERMINA GET USER DATA----------------')
         return ret
+
+############################################ FIN conseguir cosas del usuario ########################################
+
+#############################################################################################################
+#############                       send_messages                  ##########################################
+#############################################################################################################
 
     # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def reply(self, u, c, text, kb=None):
@@ -561,6 +572,8 @@ class MainClass(object):
     def send_welcome(self, u, c, user):
         self.reply(u, c, tr('welcome', user))
 
+########################################################################## FIN send_messages ########################################
+
 #############################################################################################################
 #############                         MessageHandler Methods                      ##############################
 #############################################################################################################
@@ -568,10 +581,13 @@ class MainClass(object):
     # Método que gestiona las acciones que se realizarán cuando el usuario envíe un mensaje que no sea un comando
     def text_echo(self, u, c):
         print('-------------------------COMIENZA LLAMADA A TEXT_ECHO-------------------------')
+        # Se consigue la infomación del usuario
         user = self.get_user_data(u)
+        # Si el usuario se acaba de conectar, estará en estado UNINTIALISED y se creará su usuario para comenzar
         if user.state == ChatState.UNINITIALISED:
             print('--------------TEXT_ECHO STATE UNINITIALISED----------------')
             self.start(u, c)
+        # Si el estado es EXPECT_LANGUAGE, se procede a pedirle el idioma al usuario. Una vez configurado, se envía el mensaje de bienvenida, un vídeo de ejemplo y la primera pregunta. Ahora el estado del usuario pasa a ser EXPECT_Q1
         elif user.state == ChatState.EXPECT_LANGUAGE:
             print('------------TEXT_ECHO STATE EXPECT_LANGUAGE---------------')
             if self.process_language(u, c, user):
@@ -581,6 +597,8 @@ class MainClass(object):
                 user.state = ChatState.EXPECT_Q1
             else:
                 self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+                
+        # Si el estado es EXPECT_Q1, se procede a esperar un valor numérico para la pregunta
         elif user.state == ChatState.EXPECT_Q1:
             print('----------------TEXT_ECHO STATE EXPECT_Q1----------------')
             #appends to array to store user survey information. (To be added to the user specific backup file)
@@ -592,28 +610,40 @@ class MainClass(object):
                 score_data.append(date_timestamp_format)
                 score_data.append(video_id)
                 score_data.append(user.uid)
+                
+            
             try:
+                # Se obtiene el texto enviado por el usuario
                 text_return_q1=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q1)
                 #if self.process_q1(u, c, user, text_return_q1):
+                # El texto de respuesta a la primera pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q1):
+                    # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
                     score_data.append('Q1: '+text_return_q1)
+                    # Serán enviados el mensaje de confirmación de la pregunta y la segunda pregunta, así como el estado del usuario se cambiará a EXPECT_Q2
                     self.send_q1_confirmation(u, c, user)
                     self.send_q2_question(u, c, user)
                     user.state = ChatState.EXPECT_Q2
                 else:
                     print('not process_q1')
             except:
+                # Si hubiera algún error ( valor que no sea entre 0 y el 100 ) se enviará un mensaje de error
                 self.reply(u, c, tr('notvalid', user))
-                print('holiiiii1')
+        
+        # Si el estado es EXPECT_Q2, se procede a esperar un valor numérico para la segunda pregunta        
         elif user.state == ChatState.EXPECT_Q2:
             print('----------------TEXT_ECHO STATE EXPECT_Q2----------------')
             try:
+                # Se obtiene el texto enviado por el usuario
                 text_return_q2=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q2)
                 #if self.process_q2(u, c, user, text_return_q2):
+                # El texto de respuesta a la segunda pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q2):
+                    # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
                     score_data.append('Q2: '+text_return_q2)
+                    # Serán enviados el mensaje de confirmación de la segunda pregunta y la tercera pregunta, así como el estado del usuario se cambiará a EXPECT_Q3
                     self.send_q2_confirmation(u, c, user)
                     #self.send_new_sample(u, c, user)
                     self.send_q3_question(u, c, user)
@@ -621,16 +651,21 @@ class MainClass(object):
                 else:
                     print('not process_q2')
             except:
+                # Si hubiera algún error ( valor que no sea entre 0 y el 100 ) se enviará un mensaje de error
                 self.reply(u, c, tr('notvalid', user))
-                print('holiiiii2')
+
         elif user.state == ChatState.EXPECT_Q3:
             print('----------------TEXT_ECHO STATE EXPECT_Q3----------------')
             try:
+                # Se obtiene el texto enviado por el usuario
                 text_return_q3=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q3)
                 #if self.process_q3(u, c, user, text_return_q3):
+                # El texto de respuesta a la tercera pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q3):
+                    # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
                     score_data.append('Q3: '+text_return_q3)
+                    # Tras ello, se enviarán la confimación de la tercera pregunta, un mensaje de agradecimiento, un nuevo video de ejemplo y se vuelve a enviar la primera pregunta. El estado del usuario cambia a EXPECT_Q1 y se comienza de nuevo.
                     self.send_q3_confirmation(u, c, user)
                     self.send_thanks(u, c, user)
                     self.send_new_sample(u, c, user)
@@ -639,12 +674,15 @@ class MainClass(object):
                 else:
                     print('not process_q3')
             except:
+                # Si hubiera algún error ( valor que no sea entre 0 y el 100 ) se enviará un mensaje de error
                 self.reply(u, c, tr('notvalid', user))
-                print('holiiiii3')
+
         else:
+            # Si en algún momento el estado del usuario fuera distinto a los anteriores, se entendería como que ha habido algún problema y se reiniciaría el chat.
             c.bot.send_message(chat_id=u.effective_chat.id, text="It seems that the chat is not initialised. We'll restart...")
             self.start(u, c)
 
+        # Tras algunas evaluaciones, la lista de score_data del usuario se guarda en un fichero de respaldo y se vacía
         if(len(score_data)==5):
             self.file_score_user(user.uid, score_data)
             score_data.clear()
@@ -721,14 +759,16 @@ class MainClass(object):
             score_data.clear()
         self.check_flush()
 
+######################################## FIN MessageHandler Methods ########################################
 
 #############################################################################################################
 #############                         Process Methods                      ##################################
 #############################################################################################################
 
-    # Método encargado de configurar el idioma elegido por el usuario
+    # Método encargado de configurar el idioma elegido por el usuario. El texto puede detectar inglés o español
     def process_language(self, u, c, user):
         print('------COMIENZA PROCESS_LANGUAGE-----')
+        # Se obtiene el mensaje de texto enviado por el usuario que se encuentra en la variable u
         inp = u.message.text.lower().strip()
         if   len([x for x in ['english',   'ingles', 'inglés']                if inp.find(x)!=-1]) > 0:
             user.lang = 'en'
@@ -746,7 +786,9 @@ class MainClass(object):
     # Este método sirve para obtener el mensaje de texto enviado por el usuario y obtener la primera palabra. Esto se utiliza en text_echo a la hora de procesar el valor de las preguntas en un rango o en un número
     def text_process(self, u):
         print('------COMIENZA TEXT_PROCESS-----')
+        # Se obtiene el mensaje de texto enviado por el usuario que se encuentra en la variable u
         text = u.message.text.lower().strip()
+        # Se consigue la primera palabra del mensaje de texto
         first = str(text.split()[0])
         print('------TERMINA TEXT_PROCESS-----')
         return first
@@ -807,21 +849,27 @@ class MainClass(object):
     def process_sequence(self, u, c, user, first):
         print('FIRST = ', first)
         print('-------DEF PROCESS_SEQUENCE------')
+        # Si la primera palabra es unacceptable, se envía el keyboard de rango 0 - 19
         if first == 'unacceptable':
             self.set_keyboard(u, c, tr('choose_value', user), self.a_kb)
             return False
+        # Si la primera palabra es undesirable, se envía el keyboard de rango 20 - 39
         elif first == 'undesirable':
             self.set_keyboard(u, c, tr('choose_value', user), self.b_kb)
             return False
+        # Si la primera palabra es acceptable, se envía el keyboard de rango 40 - 59
         elif first == 'acceptable':
             self.set_keyboard(u, c, tr('choose_value', user), self.c_kb)
             return False
+        # Si la primera palabra es good, se envía el keyboard de rango 60 - 79
         elif first == 'good':
             self.set_keyboard(u, c, tr('choose_value', user), self.d_kb)
             return False
+        # Si la primera palabra es desirable, se envía el keyboard de rango 80 - 100
         elif first == 'desirable':
             self.set_keyboard(u, c, tr('choose_value', user), self.e_kb)
             return False
+        # Si el usuario pulsa <--, entonces se vuelve al keyboard de elegir el rango. También se vuelve a enviar la pregunta realizada dependiendo del estado user.state
         elif first == '<--':
             if user.state == ChatState.EXPECT_Q1:
                 #self.set_keyboard(u, c, tr('q1question', user), self.main_kb)
@@ -911,13 +959,14 @@ class MainClass(object):
     # Método que procesa la evaluación de una pregunta
     def process_question(self, u, c, user, first):
         print('-------DEF PROCESS_QUESTION------')
-
+        # Se comprueba si la primera palabra es de un rango o de un número. En el primer caso, se sale del método con false.
         if not self.process_sequence(u, c, user, first):
             return False
 
         if len(first) > 3:
             raise Exception('invalid input'+first)        
         
+        # Si es un dato numérico, dependiendo del estado de user.state, se comprueba si el valor (q1, q2 o q3) está entre 0 y 100. Después se añade el valor al usuario. Si algo falla, se lanza una excepción.
         try:
             if user.state == ChatState.EXPECT_Q1:
                 
