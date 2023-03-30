@@ -88,6 +88,9 @@ class UserInfo(object):
     def current_q3(self):
         return self.input[self.current_sample][2]
 
+    def get_len_videos(self):
+        return len(self.input)
+
     def __repr__(self):
         s = '<USER '
         s += str(self.uname) + ' ('

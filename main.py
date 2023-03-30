@@ -6,6 +6,7 @@ import sys, os
 import threading
 import telegram
 import re
+from emoji import emojize
 from telegram import Update
 import numpy as np
 import requests
@@ -150,6 +151,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('get',     self.get_command))
         self.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
         self.dispatcher.add_handler(CommandHandler('ranking', self.ranking_command))
+        self.dispatcher.add_handler(CommandHandler('actual_sample', self.actual_sample_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         self.dispatcher.add_handler(MessageHandler(Filters.voice & (~Filters.command), self.voice_echo))
@@ -482,32 +484,50 @@ class MainClass(object):
                 
     # Método del comando /ranking --> el usuario podrá ver el estado del ranking, esto se traduce en ver el top 5 de personas en el ranking además de su posición en el mismo
     def ranking_command(self, u=None, c=None):
+        # Si el usuario no es nulo
         if u is not None:
+            # Se obtienen sus datos
             user = self.get_user_data(u)
 
             ret = ''
         
-            users_len_videos = dict()
+            # Se crea un diccionario con la información de los usuarios y se ordena en orden descendente de vídeos evaluados de los usuarios
+            users_len_videos_sorted = dict(sorted(self.data['users'].items(), key=lambda item:item[1].get_len_videos(), reverse=True))
         
-            for k, v in self.data['users'].items():
-                users_len_videos[k] = len(v.input)
-        
-            users_len_videos_sorted = dict(sorted(users_len_videos.items(), key=lambda item:item[1], reverse=True))
-        
-            i = 0
-            for k, v in users_len_videos_sorted.items():
-                if (i==5):
-                    break
-                ret += str(k) + ' ' + str(self.data['users'][k].uname) + ' ' + str(v) + '\n'
-                i=i+1
+            # Se crea un mensaje con la información de los usuarios (su id, su nombre y los vídeos evaluados) en orden descendente de vídeos evaluados completos
+            # Cuando haya 5 iteraciones, se sale (para que sea un top 5)
+            for k, v in list(users_len_videos_sorted.items())[:5]:
+                ret += str(k) + ' ' + str(v.uname) + ' ' + str(v.get_len_videos()) + '\n'
+                
             # Se envía el mensaje completo
             self.reply(u, c, ret)
-            self.reply(u, c, 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1))
+            # También se envía la posición del usuario en el ranking
+            self.reply(u, c, 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1) + ', con un total de '+ str(len(self.data['users'][user.uid].input)) + ' vídeos evaluados' + emojize(':1st_place_medal:'))
         
         
-    # Método del comando /actual_sample --> el usuario podrá ver el estado del ranking, esto se traduce en ver el top 5 de personas en el ranking además de su posición en el mismo
-    def actual_sample_command(self, u=None, c=None):
-        print('----------DEF actual_sample_command---------')
+    # Método del comando /actual_sample --> el usuario podrá recuperar el vídeo que estaba evaluando por si no se acordara
+    def actual_sample_command(self, u, c):
+        print('----------DEF ACTUAL SAMPLE---------')
+        #retrieve user data
+        user = self.get_user_data(u)
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
+            self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, se recupera el video que estaba evaluando
+        else:
+            # También se envía de nuevo la pregunta que el usuario está contestando
+            self.reply(u, c, 'Sending...Wait a moment/ Enviando...Espera un momento')
+            c.bot.send_video(chat_id=u.message.chat_id, video=open(user.current_sample, 'rb'), supports_streaming=True)
+            self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]))
+            if user.state == ChatState.EXPECT_Q1:
+                self.send_q1_question(u, c, user)
+            elif user.state == ChatState.EXPECT_Q2:
+                self.send_q2_question(u, c, user)
+            elif user.state == ChatState.EXPECT_Q3:
+                self.send_q3_question(u, c, user)
+        print('----------FIN ACTUAL SAMPLE---------')
                 
 ########################################################################## FIN comandos ########################################
 
