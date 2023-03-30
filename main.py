@@ -149,6 +149,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('backup',    self.user_backup_command))
         self.dispatcher.add_handler(CommandHandler('get',     self.get_command))
         self.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
+        self.dispatcher.add_handler(CommandHandler('ranking', self.ranking_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         self.dispatcher.add_handler(MessageHandler(Filters.voice & (~Filters.command), self.voice_echo))
@@ -161,9 +162,9 @@ class MainClass(object):
         #Se crea el keyboard (main_kb) para elegir una escala a la hora de responder a las preguntas usando ReplyKeyboardMarkup.
         self.main_kb = telegram.ReplyKeyboardMarkup(
             [
-                [telegram.KeyboardButton('unacceptable - undesirable'), telegram.KeyboardButton('undesirable - acceptable')],
-                [telegram.KeyboardButton('acceptable - good'), telegram.KeyboardButton('good - desirable')],
-                [telegram.KeyboardButton('desirable - perfect')],
+                [telegram.KeyboardButton('unacceptable - undesirable (0 - 19)'), telegram.KeyboardButton('undesirable - acceptable (20 - 39)')],
+                [telegram.KeyboardButton('acceptable - good (40 - 59)'), telegram.KeyboardButton('good - desirable (60 - 79)')],
+                [telegram.KeyboardButton('desirable - perfect (80 - 100)')],
                 #[telegram.KeyboardButton('/ignore'), telegram.KeyboardButton('/help'), telegram.KeyboardButton('/len'), telegram.KeyboardButton('/backup'), telegram.KeyboardButton('/start')],
 
             ],
@@ -269,7 +270,7 @@ class MainClass(object):
             l = len(user)
             self.reply(u, c, str(l))
 
-    # Método del comando /help
+    # Método del comando /help --> comando que envía
     def help_command(self, u, c):
         user = self.get_user_data(u)
         # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
@@ -360,8 +361,7 @@ class MainClass(object):
 
         text = u.message.text.split()
         if len(text) != 2:
-            #self.reply(u, c, tr('syntax', user))
-            self.reply(u, c, 'Faltan argumentos')
+            self.reply(u, c, tr('syntax', user))
             return
 
         text = text[1]
@@ -402,7 +402,7 @@ class MainClass(object):
         self.reply(u, c, tr('lang', user), kb=self.lang_kb)
         print('--------------------START termina----------------------------')
 
-    # Método del comando flush --> si el usuario es un admin, limpia el pickle de la base de datos
+    # Método del comando flush --> si el usuario es un admin, vuelca la información del pickle en la base de datos (dump) y se quita de memoria
     def flush_command(self, u, c):
         user = self.get_user_data(u)
         if str(user.uid) in admins:
@@ -421,7 +421,7 @@ class MainClass(object):
         else:
             text = u.message.text.split()
             if len(text) != 2:
-                self.reply(u, c, 'Faltan argumentos')
+                self.reply(u, c, tr('syntax', user))
                 return
             sid = u.message.text.split()[1]
             try:
@@ -479,6 +479,30 @@ class MainClass(object):
                 os.remove(str(user.uid)+"_backup_data_file.txt")
             else:
                 self.reply(u, c, tr('cannot_backup', user))
+                
+    # Método del comando /ranking --> el usuario podrá ver el estado del ranking, esto se traduce en ver el top 5 de personas en el ranking además de su posición en el mismo
+    def ranking_command(self, u=None, c=None):
+        if u is not None:
+            user = self.get_user_data(u)
+
+        ret = ''
+        
+        users_len_videos = dict()
+        
+        for k, v in self.data['users'].items():
+            users_len_videos[k] = len(v.input)
+        
+        users_len_videos_sorted = dict(sorted(users_len_videos.items(), key=lambda item:item[1], reverse=True))
+        
+        i = 0
+        for k, v in users_len_videos_sorted.items():
+            if (i==5):
+                break
+            ret += str(k) + ' ' + str(self.data['users'][k].uname) + ' ' + str(v) + '\n'
+            i=i+1
+        # Se envía el mensaje completo
+        self.reply(u, c, ret)
+        self.reply(u, c, 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1))
                 
 ########################################################################## FIN comandos ########################################
 
@@ -1057,7 +1081,7 @@ class MainClass(object):
     # Método que se encarga de enviar un nuevo ejemplo
     def send_new_sample(self, u, c, user):
         print('Send new sample')
-        if user.uid in main_users:
+        if str(user.uid) in main_users:
             # MAIN USER
             if DEBUG: self.reply(u, c, 'You are a main user')
             if random.random() < main_regular_ratio:

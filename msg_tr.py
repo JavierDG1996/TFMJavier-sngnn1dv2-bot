@@ -160,3 +160,11 @@ def tr(msg, u):
             return config['dataset_survey_messages_es']['arigato']
         else:
             Exception('Unknown language "'+u.lang+'"')
+
+    if msg == "syntax":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['syntax']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['syntax']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
