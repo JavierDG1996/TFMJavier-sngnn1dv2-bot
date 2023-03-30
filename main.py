@@ -140,8 +140,8 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('flush',   self.flush_command))
         self.dispatcher.add_handler(CommandHandler('delete',  self.delete_command))
         self.dispatcher.add_handler(CommandHandler('ignore',  self.ignore_command))
-        self.dispatcher.add_handler(CommandHandler('scan',    self.scan_command))
-        self.dispatcher.add_handler(CommandHandler('setmain', self.setmain_command))
+        #self.dispatcher.add_handler(CommandHandler('scan',    self.scan_command))
+        #self.dispatcher.add_handler(CommandHandler('setmain', self.setmain_command))
         self.dispatcher.add_handler(CommandHandler('print',   self.print_command))
         self.dispatcher.add_handler(CommandHandler('len',     self.len_command))
         self.dispatcher.add_handler(CommandHandler('count',   self.count_command))
@@ -485,24 +485,29 @@ class MainClass(object):
         if u is not None:
             user = self.get_user_data(u)
 
-        ret = ''
+            ret = ''
         
-        users_len_videos = dict()
+            users_len_videos = dict()
         
-        for k, v in self.data['users'].items():
-            users_len_videos[k] = len(v.input)
+            for k, v in self.data['users'].items():
+                users_len_videos[k] = len(v.input)
         
-        users_len_videos_sorted = dict(sorted(users_len_videos.items(), key=lambda item:item[1], reverse=True))
+            users_len_videos_sorted = dict(sorted(users_len_videos.items(), key=lambda item:item[1], reverse=True))
         
-        i = 0
-        for k, v in users_len_videos_sorted.items():
-            if (i==5):
-                break
-            ret += str(k) + ' ' + str(self.data['users'][k].uname) + ' ' + str(v) + '\n'
-            i=i+1
-        # Se envía el mensaje completo
-        self.reply(u, c, ret)
-        self.reply(u, c, 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1))
+            i = 0
+            for k, v in users_len_videos_sorted.items():
+                if (i==5):
+                    break
+                ret += str(k) + ' ' + str(self.data['users'][k].uname) + ' ' + str(v) + '\n'
+                i=i+1
+            # Se envía el mensaje completo
+            self.reply(u, c, ret)
+            self.reply(u, c, 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1))
+        
+        
+    # Método del comando /actual_sample --> el usuario podrá ver el estado del ranking, esto se traduce en ver el top 5 de personas en el ranking además de su posición en el mismo
+    def actual_sample_command(self, u=None, c=None):
+        print('----------DEF actual_sample_command---------')
                 
 ########################################################################## FIN comandos ########################################
 
