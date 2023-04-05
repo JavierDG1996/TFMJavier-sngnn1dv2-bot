@@ -29,25 +29,37 @@ config.read(file)
 
 #Obtain admin userid data from config
 admin_list_count = list(config['admin'])
-admin_list = []
+admins = []
+# En admins se encuentra la lista de usuarios administradores.
 x = 0
 while x < len(admin_list_count):
-    admin_list.append(config['admin']['userid' + str(x + 1)])
-    print(admin_list)
+    admins.append(config['admin']['userid' + str(x + 1)])
+    print(admins)
     x+= 1
 
-admins = admin_list
-admins.append(config['main_users']['userid1'])
-main_users = admins
+#admins.append(config['main_users']['userid1'])
 
+#Obtain main_users userid data from config
+main_users_list_count = list(config['main_users'])
+
+# En main_users se encuentran los admins y los usuarios no admins considerados principales
+main_users = admins
+x = 0
+while x < len(main_users_list_count):
+    main_users.append(config['main_users']['userid' + str(x + 1)])
+    print(main_users)
+    x+= 1
+
+# Estos son los ratios en los que aparecen los videos según sean basic o main
 main_regular_ratio = 0.5
 basic_regular_ratio = 0.5
 initial_basic = 30
 initial_main = 200
 
 DEBUG = True
-
+# Lista de puntuación
 score_data = []
+# Id video actual
 current_video_id = ''
 ############################################################################
 # obtener los videos de la carpeta de videos
@@ -1103,106 +1115,167 @@ class MainClass(object):
 #############                         Send Sample Methods                      ##############################
 #############################################################################################################
 
-    # Método que se encarga de enviar un nuevo ejemplo
+    # Método gestor que se encarga de enviar un nuevo ejemplo
     def send_new_sample(self, u, c, user):
         print('Send new sample')
+        # Si el usuario forma parte de main_users...
         if str(user.uid) in main_users:
             # MAIN USER
-            if DEBUG: self.reply(u, c, 'You are a main user')
+            #if DEBUG: self.reply(u, c, 'You are a main user')
+            # ...es un usuario principal
+            # De forma aleatoria, según el rango main_regular_ratio de valor 0.5, puede que se envíe un ejemplo main o un ejemplo regular.
             if random.random() < main_regular_ratio:
                 # SUBSET SAMPLE
-                if DEBUG: self.reply(u, c, 'I\'ll try with a main sample')
+                #if DEBUG: self.reply(u, c, 'I\'ll try with a main sample')
+                # Se prueba a intentar enviar un nuevo ejemplo main (para los usuarios main)
                 if not self.send_new_sample_main(u, c, user):
-                    if DEBUG: self.reply(u, c, 'It seems it did not work, sending a regular sample')
+                    #if DEBUG: self.reply(u, c, 'It seems it did not work, sending a regular sample')
+                    # Si no diera cierto, se enviará un nuevo mensaje regular
                     self.send_new_sample_regular(u, c, user, change=True)
             else:
                 # REGULAR SAMPLE
-                if DEBUG: self.reply(u, c, 'I\'ll try with a regular sample')
+                #if DEBUG: self.reply(u, c, 'I\'ll try with a regular sample')
+                # Se prueba a intentar enviar un nuevo ejemplo regular
                 if not self.send_new_sample_regular(u, c, user):
-                    if DEBUG: self.reply(u, c, 'It seems it did not work, sending a main sample')
+                    #if DEBUG: self.reply(u, c, 'It seems it did not work, sending a main sample')
+                    # Si no diera cierto, se enviará un nuevo mensaje main
                     self.send_new_sample_main(u, c, user)
         else:
+            # Si el usuario no forma parte de main_users...
             # REGULAR USER
+            # ...es un usuario normal
+            # De forma aleatoria, según el rango basic_regular_ratio de valor 0.5, puede que se envíe un ejemplo basic o un ejemplo regular.
             if random.random() < basic_regular_ratio:
                 # SUBSET SAMPLE
+                # Se prueba a intentar enviar un nuevo ejemplo basic
                 if not self.send_new_sample_basic(u, c, user):
+                    # Si no diera cierto, se enviará un nuevo mensaje regular
                     self.send_new_sample_regular(u, c, user, change=True)
             else:
                 # REGULAR SAMPLE
+                # Se prueba a intentar enviar un nuevo ejemplo regular
                 if not self.send_new_sample_regular(u, c, user):
+                    # Si no diera cierto, se enviará un nuevo mensaje basic
                     self.send_new_sample_basic(u, c, user)
 
+    # Método de envío de ejemplos que se encarga de enviar un nuevo ejemplo del apartado main
     def send_new_sample_main(self, u, c, user, change=False):
         found = False
+        # Se reordenan aleatoriamente los vídeos del apartado main
         random.shuffle(self.data['files']['main'])
+        # Se comprueban todos los vídeos del tipo main
         for sample in self.data['files']['main']:
+            # Si el ejemplo no está en el input del usuario, significa que es un vídeo nuevo no evaluado antes por el usuario
             if not sample in user.input:
+                # Si se encuentra un video nuevo para el usuario, found tendrá valor true y no se comprobarán más vídeos
                 found = True
                 break
+        # Se valora la bandera found
         if found:
-            if DEBUG: self.reply(u, c, 'Sending a main-first one')
+            #if DEBUG: self.reply(u, c, 'Sending a main-first one')
+            # Si es True, el vídeo es nuevo para el usuario. Eso significa que este ejemplo será el actual para el usuario...
             user.current_sample = sample
+            #... y será enviado por el bot
             c.bot.send_video(chat_id=u.message.chat_id, video=open(sample, 'rb'), supports_streaming=True)
+            # También se envía el ID del video
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]), kb=self.main_kb)
+            # El método devuelve True, saliendo del método y enviando un vídeo completamente nuevo para el usuario
             return True
         else:
-            if DEBUG: self.reply(u, c, 'Trying to send a main-dup one')
+            #if DEBUG: self.reply(u, c, 'Trying to send a main-dup one')
+            # Si la bandera found es False, significa que el vídeo enviado ya ha sido evaluado por el usuario al menos una vez. Por tanto, el resultado será gestionado por el método de envío de mensajes duplicados
             return self.send_new_sample_dup(u, c, user)
 
-    def send_new_sample_basic(self, u, c, user, change=False):
-        print('Send new sample BASIC')
-        found = False
-        random.shuffle(self.data['files']['basic'])
-        for sample in self.data['files']['basic']:
-            if not sample in user.input:
-                found = True
-                break
-        if found:
-            user.current_sample = sample
-            c.bot.send_video(chat_id=u.message.chat_id, video=open(sample, 'rb'), supports_streaming=True)
-            self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]), kb=self.main_kb)
-        return found
-
+    # Método de envío de ejemplos que se encarga de enviar ejemplos ya evaluados anteriormente por el usuario
     def send_new_sample_dup(self, u, c, user, change=False):
         print('Send new sample DUP')
         found = False
+        # Se reordenan aleatoriamente los vídeos del apartado main
         random.shuffle(self.data['files']['main'])
+        # Se comprueban todos los vídeos del tipo main
         for sample in self.data['files']['main']:
+            # Si el nombre del ejemplo, con subfijo -D, no está en el input del usuario, significa que es un vídeo que se está evaluando por segunda vez
             if not sample+'D' in user.input:
+                # Si se dan las condiciones, found tendrá valor true y no se comprobarán más vídeos
                 found = True
                 break
 
+        # Se valora la bandera found
         if found:
-            if DEBUG: self.reply(u, c, 'Sending a dup one!')
+            #if DEBUG: self.reply(u, c, 'Sending a dup one!')
+            # Si es True, el vídeo se está evaluando por segunda vez para el usuario. Eso significa que este ejemplo (añadiendole una D al final) será el actual para el usuario...
             user.current_sample = sample+'D'
+            #... y será enviado por el bot
             c.bot.send_video(chat_id=u.message.chat_id, video=open(sample, 'rb'), supports_streaming=True)
+            # También se envía el ID del video
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0])+'D', kb=self.main_kb)
+            # El método devuelve True, saliendo del método y enviando un vídeo repetido por segunda vez para el usuario
             return True
+        # Si found fuera False, pero la bandera change también lo fuera...
         elif not change:
+            # ... el resultado será gestionado por el método de envío de mensajes regulares
             return self.send_new_sample_regular(u, c, user, change=True)
         else:
+            # Si se hubieran realizado la evaluación de los videos 2 veces cada uno, el resultado devolvería falso para este método
             self.reply(u, c, 'You did all samples! Thank you! (this is probably an error).')
             return False
 
+    # Método de envío de ejemplos que se encarga de enviar ejemplos catalogados como basic
+    def send_new_sample_basic(self, u, c, user, change=False):
+        print('Send new sample BASIC')
+        found = False
+        # Se reordenan aleatoriamente los vídeos del apartado basic
+        random.shuffle(self.data['files']['basic'])
+        # Se comprueban todos los vídeos del tipo basic
+        for sample in self.data['files']['basic']:
+            # Si el ejemplo no está en el input del usuario, significa que es un vídeo nuevo no evaluado antes por el usuario
+            if not sample in user.input:
+                # Si se encuentra un video nuevo para el usuario, found tendrá valor true y no se comprobarán más vídeos
+                found = True
+                break
+        # Se valora la bandera found
+        if found:
+            # Si es True, el vídeo es nuevo para el usuario. Eso significa que este ejemplo será el actual para el usuario...
+            user.current_sample = sample
+            #... y será enviado por el bot
+            c.bot.send_video(chat_id=u.message.chat_id, video=open(sample, 'rb'), supports_streaming=True)
+            # También se envía el ID del video
+            self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]), kb=self.main_kb)
+        # Si el valor de found es True se habrá enviado un vídeo, si es False no hará nada
+        return found
+
+    # Método de envío de ejemplos que se encarga de enviar ejemplos catalogados como regular
     def send_new_sample_regular(self, u, c, user, change=False):
         print('Send new sample REGULAR')
+        # Se reordenan aleatoriamente los vídeos del apartado regular
         random.shuffle(self.data['files']['regular'])
         found = False
+        # Se comprueban todos los vídeos del tipo regular
         for sample in self.data['files']['regular']:
+            # Si el ejemplo no está en el input del usuario, significa que es un vídeo nuevo no evaluado antes por el usuario
             if not sample in user.input:
+                # Si se encuentra un video nuevo para el usuario, found tendrá valor true y no se comprobarán más vídeos
                 found = True
                 break
 
+        # Se valora la bandera found
         if found is True:
+            # Si es True, el vídeo es nuevo para el usuario. Eso significa que este ejemplo será el actual para el usuario...
             user.current_sample = sample
+            #... y será enviado por el bot
             c.bot.send_video(chat_id=u.message.chat_id, video=open(sample, 'rb'), supports_streaming=True)
+            # También se envía el ID del video
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]), kb=self.main_kb)
+            # El método devuelve True, saliendo del método y enviando un vídeo completamente nuevo para el usuario
             return True
         else:
+            # Si found es False: Si el usuario no es un usuario principal o la bandera change es True
             if user.uid not in main_users or change:
+                # El usuario ha realizado la evaluación de todos los videos regulares
                 self.reply(u, c, 'You did all samples! Thank you! (this is probably an error).', kb=self.main_kb)
                 return False
             else:
+                # En caso de que el usuario fuera un usuario principal y la bandera change estuviera en False, el resultado lo evaluaría el método de envío de mensajes para usuarios principales
                 return self.send_new_sample_main(u, c, user, change=True)
         raise Exception('132131frwejf8jd38')
 
