@@ -168,3 +168,11 @@ def tr(msg, u):
             return config['dataset_survey_messages_es']['syntax']
         else:
             Exception('Unknown language "'+u.lang+'"')
+            
+    if msg == "sending_sample":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['sending_sample']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['sending_sample']
+        else:
+            Exception('Unknown language "'+u.lang+'"')

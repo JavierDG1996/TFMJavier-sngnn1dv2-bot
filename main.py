@@ -164,6 +164,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
         self.dispatcher.add_handler(CommandHandler('ranking', self.ranking_command))
         self.dispatcher.add_handler(CommandHandler('actual_sample', self.actual_sample_command))
+        self.dispatcher.add_handler(CommandHandler('send_input', self.send_input_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         self.dispatcher.add_handler(MessageHandler(Filters.voice & (~Filters.command), self.voice_echo))
@@ -404,6 +405,15 @@ class MainClass(object):
         print('información update = ',u)
         print('información context = ',c)
         user = self.get_user_data(u)
+        
+        #Si el usuario ha elegido comenzar de nuevo y estaba en alguna pregunta, se borra la evaluación incompleta del input del usuario
+        if user.state == ChatState.EXPECT_Q1 or user.state == ChatState.EXPECT_Q2 or user.state == ChatState.EXPECT_Q3:
+            sid = user.current_sample
+            try:
+                del user.input[sid]
+            except:
+                pass
+        
         print('información conseguida de update = ', user)
         print('tipo de user = ', type(user))
         user.lang = ''
@@ -530,7 +540,7 @@ class MainClass(object):
         # Si el usuario está en otro estado, se recupera el video que estaba evaluando
         else:
             # También se envía de nuevo la pregunta que el usuario está contestando
-            self.reply(u, c, 'Sending...Wait a moment/ Enviando...Espera un momento')
+            self.reply(u, c, tr('sending_sample', user))
             c.bot.send_video(chat_id=u.message.chat_id, video=open(user.current_sample, 'rb'), supports_streaming=True)
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]))
             if user.state == ChatState.EXPECT_Q1:
@@ -540,7 +550,29 @@ class MainClass(object):
             elif user.state == ChatState.EXPECT_Q3:
                 self.send_q3_question(u, c, user)
         print('----------FIN ACTUAL SAMPLE---------')
-                
+ 
+    # Método del comando /send_input --> el usuario podrá recuperar la información de videos realizados
+    def send_input_command(self, u, c):
+        print('----------DEF SEND INPUT---------')
+        #retrieve user data
+        user = self.get_user_data(u)
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
+            self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, se recupera el video que estaba evaluando
+        else:
+            print(user.input)
+            ret = ''
+            # Se va a recorrer la lista de usuarios de la base de datos y se va a obtener la información de cada uno (su uid, su nombre y el número de vídeos evaluados)
+            for k, v in user.input.items():
+                ret += 'VIDEO ' + str(k) + ' --- DATOS: ' + str(v) + '\n'
+            # Se envía el mensaje completo
+            self.reply(u, c, ret)
+        print('----------FIN SEND INPUT---------')
+
+              
 ########################################################################## FIN comandos ########################################
 
 #############################################################################################################
@@ -741,7 +773,7 @@ class MainClass(object):
                     print('not process_q1')
             except:
                 # Si hubiera algún error ( valor que no sea entre 0 y el 100 ) se enviará un mensaje de error
-                self.reply(u, c, tr('notvalid', user))
+                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
         
         # Si el estado es EXPECT_Q2, se procede a esperar un valor numérico para la segunda pregunta        
         elif user.state == ChatState.EXPECT_Q2:
@@ -764,7 +796,7 @@ class MainClass(object):
                     print('not process_q2')
             except:
                 # Si hubiera algún error ( valor que no sea entre 0 y el 100 ) se enviará un mensaje de error
-                self.reply(u, c, tr('notvalid', user))
+                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
 
         elif user.state == ChatState.EXPECT_Q3:
             print('----------------TEXT_ECHO STATE EXPECT_Q3----------------')
@@ -787,7 +819,7 @@ class MainClass(object):
                     print('not process_q3')
             except:
                 # Si hubiera algún error ( valor que no sea entre 0 y el 100 ) se enviará un mensaje de error
-                self.reply(u, c, tr('notvalid', user))
+                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
 
         else:
             # Si en algún momento el estado del usuario fuera distinto a los anteriores, se entendería como que ha habido algún problema y se reiniciaría el chat.
@@ -841,7 +873,7 @@ class MainClass(object):
                 else:
                     print('not process_q1')
             except:
-                self.reply(u, c, tr('notvalid', user))
+                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
                 print('holiiiii3')
         elif user.state == ChatState.EXPECT_Q2:
             #calls voice_process method to convert voice to text. The response is sent to process_qw to validate score
@@ -857,7 +889,7 @@ class MainClass(object):
                 else:
                     print('not process_q2')
             except:
-                self.reply(u, c, tr('notvalid', user))
+                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
                 print('holiiiii4')
         #if user's chatstate not in any of the enum values, the below message is sent.
         else:
@@ -1118,6 +1150,7 @@ class MainClass(object):
     # Método gestor que se encarga de enviar un nuevo ejemplo
     def send_new_sample(self, u, c, user):
         print('Send new sample')
+        self.reply(u, c, tr('sending_sample', user))
         # Si el usuario forma parte de main_users...
         if str(user.uid) in main_users:
             # MAIN USER
