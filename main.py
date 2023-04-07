@@ -51,10 +51,10 @@ while x < len(main_users_list_count):
     x+= 1
 
 # Estos son los ratios en los que aparecen los videos según sean basic o main
-main_regular_ratio = 0.5
-basic_regular_ratio = 0.5
-initial_basic = 30
-initial_main = 200
+main_regular_ratio = float(config['ratio']['main_regular_ratio'])
+basic_regular_ratio = float(config['ratio']['basic_regular_ratio'])
+initial_basic = float(config['ratio']['initial_basic'])
+initial_main = float(config['ratio']['initial_main'])
 
 DEBUG = True
 # Lista de puntuación
@@ -161,7 +161,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('help',    self.help_command))
         self.dispatcher.add_handler(CommandHandler('backup',    self.user_backup_command))
         self.dispatcher.add_handler(CommandHandler('get',     self.get_command))
-        self.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
+        #self.dispatcher.add_handler(CommandHandler('restart', self.restart_command))
         self.dispatcher.add_handler(CommandHandler('ranking', self.ranking_command))
         self.dispatcher.add_handler(CommandHandler('actual_sample', self.actual_sample_command))
         self.dispatcher.add_handler(CommandHandler('send_input', self.send_input_command))
@@ -171,44 +171,44 @@ class MainClass(object):
         
         #Se crea el keyboard (lang_kb) para elegir idioma usando ReplyKeyboardMarkup.
         self.lang_kb = telegram.ReplyKeyboardMarkup(
-            [[telegram.KeyboardButton('english')], [telegram.KeyboardButton('castellano')]],
+            [[telegram.KeyboardButton('english '+emojize(':United_Kingdom:'))], [telegram.KeyboardButton('castellano '+emojize(':Spain:'))]],
             resize_keyboard=True, one_time_keyboard=True)
 
         #Se crea el keyboard (main_kb) para elegir una escala a la hora de responder a las preguntas usando ReplyKeyboardMarkup.
         self.main_kb = telegram.ReplyKeyboardMarkup(
             [
-                [telegram.KeyboardButton('unacceptable - undesirable (0 - 19)'), telegram.KeyboardButton('undesirable - acceptable (20 - 39)')],
-                [telegram.KeyboardButton('acceptable - good (40 - 59)'), telegram.KeyboardButton('good - desirable (60 - 79)')],
-                [telegram.KeyboardButton('desirable - perfect (80 - 100)')],
+                [telegram.KeyboardButton('unacceptable - undesirable (0 '+emojize(':enraged_face:')+' - 20 '+emojize(':unamused_face:')+')'), telegram.KeyboardButton('undesirable - acceptable (20 '+emojize(':unamused_face:')+' - 40 '+emojize(':thinking_face:')+')')],
+                [telegram.KeyboardButton('acceptable - good (40 '+emojize(':thinking_face:')+' - 60 '+emojize(':relieved_face:')+')'), telegram.KeyboardButton('good - desirable (60 '+emojize(':relieved_face:')+' - 80 '+emojize(':smiling_face_with_heart-eyes:')+')')],
+                [telegram.KeyboardButton('desirable - perfect (80 '+emojize(':smiling_face_with_heart-eyes:')+' - 100 '+emojize(':star-struck:')+')')],
                 #[telegram.KeyboardButton('/ignore'), telegram.KeyboardButton('/help'), telegram.KeyboardButton('/len'), telegram.KeyboardButton('/backup'), telegram.KeyboardButton('/start')],
 
             ],
             resize_keyboard=True, one_time_keyboard=True)
             
         #Se crea el keyboard (a_kb) de la primera escala (unacceptable - undesirable) usando ReplyKeyboardMarkup.
-        a_kb =  [telegram.KeyboardButton('0 unacceptable')] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton('<--')]
+        a_kb =  [telegram.KeyboardButton('0 '+emojize(':enraged_face:'))] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 '+emojize(':unamused_face:'))] + [telegram.KeyboardButton('<<')]
         print('LEN A =', len(a_kb))
         a_kb = [ a_kb[0:6], a_kb[6:15], a_kb[15:] ]
         self.a_kb = telegram.ReplyKeyboardMarkup(a_kb, resize_keyboard=True, one_time_keyboard=True)
         
         #Se crea el keyboard (b_kb) de la segunda escala (undesirable - acceptable) usando ReplyKeyboardMarkup.
-        b_kb =  [telegram.KeyboardButton('20 undesirable')] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton('<--')]
+        b_kb =  [telegram.KeyboardButton('20 '+emojize(':unamused_face:'))] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 '+emojize(':thinking_face:'))] + [telegram.KeyboardButton('<<')]
         print('LEN B =', len(b_kb))
         b_kb = [ b_kb[0:6], b_kb[6:15], b_kb[15:] ]
         self.b_kb = telegram.ReplyKeyboardMarkup(b_kb, resize_keyboard=True, one_time_keyboard=True)
         
         #Se crea el keyboard (c_kb) de la tercera escala (acceptable - good) usando ReplyKeyboardMarkup.
-        c_kb =  [telegram.KeyboardButton('40 acceptable')] + [telegram.KeyboardButton(str(x)) for x in range(41, 60)] + [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton('<--')]
+        c_kb =  [telegram.KeyboardButton('40 '+emojize(':thinking_face:'))] + [telegram.KeyboardButton(str(x)) for x in range(41, 60)] + [telegram.KeyboardButton('60 '+emojize(':relieved_face:'))] + [telegram.KeyboardButton('<<')]
         c_kb = [ c_kb[0:6], c_kb[6:15], c_kb[15:] ]
         self.c_kb = telegram.ReplyKeyboardMarkup(c_kb, resize_keyboard=True, one_time_keyboard=True)
         
         #Se crea el keyboard (d_kb) de la cuarta escala (good - desirable) usando ReplyKeyboardMarkup.
-        d_kb =  [telegram.KeyboardButton('60 good')] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton('<--')]
+        d_kb =  [telegram.KeyboardButton('60 '+emojize(':relieved_face:'))] + [telegram.KeyboardButton(str(x)) for x in range(61, 80)] + [telegram.KeyboardButton('80 '+emojize(':smiling_face_with_heart-eyes:'))] + [telegram.KeyboardButton('<<')]
         d_kb = [ d_kb[0:6], d_kb[6:15], d_kb[15:] ]
         self.d_kb = telegram.ReplyKeyboardMarkup(d_kb, resize_keyboard=True, one_time_keyboard=True)
         
         #Se crea el keyboard (e_kb) de la quinta escala (desirable - perfect) usando ReplyKeyboardMarkup.
-        e_kb =  [telegram.KeyboardButton('80 desirable')] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 perfect')] + [telegram.KeyboardButton('<--')]
+        e_kb =  [telegram.KeyboardButton('80 '+emojize(':smiling_face_with_heart-eyes:'))] + [telegram.KeyboardButton(str(x)) for x in range(81, 100)] + [telegram.KeyboardButton('100 '+emojize(':star-struck:'))] + [telegram.KeyboardButton('<<')]
         e_kb = [ e_kb[0:6], e_kb[6:15], e_kb[15:] ]
         self.e_kb = telegram.ReplyKeyboardMarkup(e_kb, resize_keyboard=True, one_time_keyboard=True)
 
@@ -512,19 +512,41 @@ class MainClass(object):
             user = self.get_user_data(u)
 
             ret = ''
+            
+            i = 1
         
             # Se crea un diccionario con la información de los usuarios y se ordena en orden descendente de vídeos evaluados de los usuarios
             users_len_videos_sorted = dict(sorted(self.data['users'].items(), key=lambda item:item[1].get_len_videos(), reverse=True))
+            
+            self.reply(u, c, 'RANKING')
         
             # Se crea un mensaje con la información de los usuarios (su id, su nombre y los vídeos evaluados) en orden descendente de vídeos evaluados completos
             # Cuando haya 5 iteraciones, se sale (para que sea un top 5)
             for k, v in list(users_len_videos_sorted.items())[:5]:
-                ret += str(k) + ' ' + str(v.uname) + ' ' + str(v.get_len_videos()) + '\n'
+                if i==1:
+                    ret += emojize(':1st_place_medal:')
+                elif i==2:
+                    ret += emojize(':2nd_place_medal:')
+                elif i==3:
+                    ret += emojize(':3rd_place_medal:')
+                else:
+                    ret += str(i)
+                ret += ' - ' + str(v.uname) + ' (' + str(k) + ') - Videos: ' + str(v.get_len_videos()) + '\n'
+                i+=1
                 
             # Se envía el mensaje completo
             self.reply(u, c, ret)
             # También se envía la posición del usuario en el ranking
-            self.reply(u, c, 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1) + ', con un total de '+ str(len(self.data['users'][user.uid].input)) + ' vídeos evaluados' + emojize(':1st_place_medal:'))
+            ret_pos = ''
+            ret_pos += 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1) + ', con un total de '+ str(len(self.data['users'][user.uid].input)) + ' vídeos evaluados '
+            if list(users_len_videos_sorted).index(user.uid)+1 == 1:
+                ret_pos += emojize(':1st_place_medal:')
+            elif list(users_len_videos_sorted).index(user.uid)+1 == 2:
+                ret_pos += emojize(':2nd_place_medal:')
+            elif list(users_len_videos_sorted).index(user.uid)+1 == 3:
+                ret_pos += emojize(':3rd_place_medal:')
+            
+            self.reply(u, c, ret_pos)
         
         
     # Método del comando /actual_sample --> el usuario podrá recuperar el vídeo que estaba evaluando por si no se acordara
@@ -679,7 +701,7 @@ class MainClass(object):
     # Método que se encarga de enviar la confirmación de la primera pregunta al usuario
     def send_q1_confirmation(self, u, c, user):
         print('--------DEF SEND_Q1_CONFIRMATION----------')
-        self.reply(u, c, tr('q1confirmation', user))
+        self.reply(u, c, tr('q1confirmation', user)+emojize(':green_circle:')+emojize(':red_circle:')+emojize(':red_circle:')+emojize(':smiling_face_with_smiling_eyes:'))
         print('--------TERMINA SEND_Q1_CONFIRMATION----------')
 
     # Método que se encarga de enviar la segunda pregunta al usuario
@@ -692,7 +714,7 @@ class MainClass(object):
     # Método que se encarga de enviar la confirmación de la segunda pregunta al usuario
     def send_q2_confirmation(self, u, c, user):
         print('--------DEF SEND_Q2_CONFIRMATION----------')
-        self.reply(u, c, tr('q2confirmation', user))
+        self.reply(u, c, tr('q2confirmation', user)+emojize(':green_circle:')+emojize(':green_circle:')+emojize(':red_circle:')+emojize(':smiling_face_with_smiling_eyes:'))
         print('--------TERMINA SEND_Q2_CONFIRMATION----------')
 
     # Método que se encarga de enviar la tercera pregunta al usuario
@@ -705,16 +727,16 @@ class MainClass(object):
     # Método que se encarga de enviar la confirmación de la tercera pregunta al usuario
     def send_q3_confirmation(self, u, c, user):
         print('--------DEF SEND_Q3_CONFIRMATION----------')
-        self.reply(u, c, tr('q3confirmation', user))
+        self.reply(u, c, tr('q3confirmation', user)+emojize(':green_circle:')+emojize(':green_circle:')+emojize(':green_circle:')+emojize(':star-struck:'))
         print('--------TERMINA SEND_Q3_CONFIRMATION----------')
         
     # Mensaje de gracias
     def send_thanks(self, u, c, user):
-        self.reply(u, c, tr('arigato', user))
+        self.reply(u, c, tr('arigato', user)+emojize(':smiling_face:'))
         
     # Mensaje de bienvenida
     def send_welcome(self, u, c, user):
-        self.reply(u, c, tr('welcome', user))
+        self.reply(u, c, tr('welcome', user)+emojize(':smiling_face:'))
 
 ########################################################################## FIN send_messages ########################################
 
@@ -989,7 +1011,7 @@ class MainClass(object):
         #Return text score between 0-100
         return voice_integer_number
 
-    # Método que procesa los rangos de evaluación si se hubieran pulsado los botones de rango o de <--
+    # Método que procesa los rangos de evaluación si se hubieran pulsado los botones de rango o de <<
     def process_sequence(self, u, c, user, first):
         print('FIRST = ', first)
         print('-------DEF PROCESS_SEQUENCE------')
@@ -1013,8 +1035,8 @@ class MainClass(object):
         elif first == 'desirable':
             self.set_keyboard(u, c, tr('choose_value', user), self.e_kb)
             return False
-        # Si el usuario pulsa <--, entonces se vuelve al keyboard de elegir el rango. También se vuelve a enviar la pregunta realizada dependiendo del estado user.state
-        elif first == '<--':
+        # Si el usuario pulsa <<, entonces se vuelve al keyboard de elegir el rango. También se vuelve a enviar la pregunta realizada dependiendo del estado user.state
+        elif first == '<<':
             if user.state == ChatState.EXPECT_Q1:
                 #self.set_keyboard(u, c, tr('q1question', user), self.main_kb)
                 self.send_q1_question(u, c, user)
