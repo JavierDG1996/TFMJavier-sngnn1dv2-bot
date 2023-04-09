@@ -37,8 +37,6 @@ while x < len(admin_list_count):
     print(admins)
     x+= 1
 
-#admins.append(config['main_users']['userid1'])
-
 #Obtain main_users userid data from config
 main_users_list_count = list(config['main_users'])
 
@@ -180,8 +178,6 @@ class MainClass(object):
                 [telegram.KeyboardButton('unacceptable - undesirable (0 '+emojize(':enraged_face:')+' - 20 '+emojize(':unamused_face:')+')'), telegram.KeyboardButton('undesirable - acceptable (20 '+emojize(':unamused_face:')+' - 40 '+emojize(':thinking_face:')+')')],
                 [telegram.KeyboardButton('acceptable - good (40 '+emojize(':thinking_face:')+' - 60 '+emojize(':relieved_face:')+')'), telegram.KeyboardButton('good - desirable (60 '+emojize(':relieved_face:')+' - 80 '+emojize(':smiling_face_with_heart-eyes:')+')')],
                 [telegram.KeyboardButton('desirable - perfect (80 '+emojize(':smiling_face_with_heart-eyes:')+' - 100 '+emojize(':star-struck:')+')')],
-                #[telegram.KeyboardButton('/ignore'), telegram.KeyboardButton('/help'), telegram.KeyboardButton('/len'), telegram.KeyboardButton('/backup'), telegram.KeyboardButton('/start')],
-
             ],
             resize_keyboard=True, one_time_keyboard=True)
             
@@ -285,7 +281,7 @@ class MainClass(object):
             l = len(user)
             self.reply(u, c, str(l))
 
-    # Método del comando /help --> comando que envía
+    # Método del comando /help --> comando que envía ayuda un archivo de explicación a petición del usuario
     def help_command(self, u, c):
         user = self.get_user_data(u)
         # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
@@ -585,11 +581,11 @@ class MainClass(object):
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
         # Si el usuario está en otro estado, se recupera el video que estaba evaluando
         else:
-            print(user.input)
             ret = ''
+            self.reply(u, c, 'INPUT USER: '+str(user.uname)+' ('+str(user.uid)+')')
             # Se va a recorrer la lista de usuarios de la base de datos y se va a obtener la información de cada uno (su uid, su nombre y el número de vídeos evaluados)
-            for k, v in user.input.items():
-                ret += 'VIDEO ' + str(k) + ' --- DATOS: ' + str(v) + '\n'
+            for k, v in sorted(user.input.items()):
+                ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
             # Se envía el mensaje completo
             self.reply(u, c, ret)
         print('----------FIN SEND INPUT---------')
@@ -660,34 +656,20 @@ class MainClass(object):
     # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def reply(self, u, c, text, kb=None):
         print('-------DEF REPLY----------------')
-        #user = self.get_user_data(u)
-        #print('UID', user.uid)
         
         print('UID', u.effective_chat.id)
         print('TEXTO A ENVIAR = ', text)
-        #if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
-        #    print('IGNORE KEYBOARD BY UID')
-        #    kb = None
+
         ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
         print('-------TERMINA REPLY----------------')
 
     # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def set_keyboard(self, u, c, text, kb=None):
         print('-------DEF SET KEYBOARD----------------')
-        #print('Tipo de la u = ', type(u))
-        #user = self.get_user_data(u)
-        #print('UID', user.uid)
         
         print('UID', u.effective_chat.id)
         print('TEXTO A ENVIAR = ', text)
-        #if str(user.uid) in config['admin']['userid2']:  # PARA QUÉ SIRVE ESTO?
-        #    print('Llega a ser un admin')
-        #    print('IGNORE KEYBOARD BY UID')
-        #    return
         
-        #ret = c.bot.send_message(chat_id=u.effective_chat.id, text='got it', reply_markup=kb)
-        #ret = c.bot.send_message(chat_id=user.uid, text='got it', reply_markup=kb)
-        #ret = c.bot.send_message(chat_id=user.uid, text=tr('choose_value', user), reply_markup=kb)
         ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
         print('-------TERMINA SET KEYBOARD----------------')
 
@@ -782,7 +764,6 @@ class MainClass(object):
                 # Se obtiene el texto enviado por el usuario
                 text_return_q1=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q1)
-                #if self.process_q1(u, c, user, text_return_q1):
                 # El texto de respuesta a la primera pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q1):
                     # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
@@ -804,14 +785,12 @@ class MainClass(object):
                 # Se obtiene el texto enviado por el usuario
                 text_return_q2=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q2)
-                #if self.process_q2(u, c, user, text_return_q2):
                 # El texto de respuesta a la segunda pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q2):
                     # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
                     score_data.append('Q2: '+text_return_q2)
                     # Serán enviados el mensaje de confirmación de la segunda pregunta y la tercera pregunta, así como el estado del usuario se cambiará a EXPECT_Q3
                     self.send_q2_confirmation(u, c, user)
-                    #self.send_new_sample(u, c, user)
                     self.send_q3_question(u, c, user)
                     user.state = ChatState.EXPECT_Q3
                 else:
@@ -826,7 +805,6 @@ class MainClass(object):
                 # Se obtiene el texto enviado por el usuario
                 text_return_q3=self.text_process(u)
                 print('TEXT RETURN = ', text_return_q3)
-                #if self.process_q3(u, c, user, text_return_q3):
                 # El texto de respuesta a la tercera pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q3):
                     # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
@@ -1047,80 +1025,8 @@ class MainClass(object):
                 #self.set_keyboard(u, c, tr('q3question', user), self.main_kb)
                 self.send_q3_question(u, c, user)
             return False
-        #elif first == 'very':
-            #try:
-            #    print('trying')
-            #    self.set_keyboard(user, c, self.e_kb)
-            #    print('done')
-            #except Exception as e:
-            #    print(e)
-            #return False
         else:
             return True
-
-#    # Método que procesa la evaluación de la primera pregunta
-#    def process_q1(self, u, c, user, first):
-#        print('FIRST = ', first)
-#        print('-------DEF PROCESS_Q1------')
-#        
-#        if not self.process_sequence(u, c, user, first):
-#            return False
-#
-#        if len(first) > 3:
-#            raise Exception('invalid input'+first)
-#        try:
-#            q1 = int(first)
-#            if q1 < 0 or q1 > 100:
-#                print('Invalid input 2', first)
-#                raise Exception('invalid input'+first)
-#            try:
-#                user.add_q1_for_current_sequence(q1)
-#            except Exception as e:
-#                print(e)
-#        except Exception:
-#            print('Invalid input 3', first)
-#            raise Exception('invalid input'+first)
-#        return True
-
-#    # Método que procesa la evaluación de la segunda pregunta
-#    def process_q2(self, u, c, user, first):
-#        print('-------DEF PROCESS_Q2------')
-#        
-#        if not self.process_sequence(u, c, user, first):
-#            return False
-#
-#        if len(first) > 3:
-#            raise Exception('invalid input'+first)
-#        try:
-#            q2 = int(first)
-#            #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
-#            if q2 < 0 or q2 > 100:
-#                raise Exception('invalid input'+first)
-#            user.add_q2_for_current_sequence(q2)
-#        except Exception:
-#            print('Invalid input 3', first)
-#            raise Exception('invalid input'+first)
-#        return True
-        
-#    # Método que procesa la evaluación de la tercera pregunta
-#    def process_q3(self, u, c, user, first):
-#        print('-------DEF PROCESS_Q3------')
-#
-#        if not self.process_sequence(u, c, user, first):
-#            return False
-#
-#        if len(first) > 3:
-#            raise Exception('invalid input'+first)
-#        try:
-#            q3 = int(first)
-#            #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
-#            if q3 < 0 or q3 > 100:
-#                raise Exception('invalid input'+first)
-#            user.add_q3_for_current_sequence(q3)
-#        except Exception:
-#            print('Invalid input 3', first)
-#            raise Exception('invalid input'+first)
-#        return True
 
     # Método que procesa la evaluación de una pregunta
     def process_question(self, u, c, user, first):
@@ -1137,7 +1043,6 @@ class MainClass(object):
             if user.state == ChatState.EXPECT_Q1:
                 
                 q1 = int(first)
-                #if q1 < 0 or q1 > 100:
                 if q1 < 0 or q1 > 100:
                     raise Exception('invalid input'+first)
                 user.add_q1_for_current_sequence(q1)
@@ -1145,7 +1050,6 @@ class MainClass(object):
             elif user.state == ChatState.EXPECT_Q2:
                 
                 q2 = int(first)
-                #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
                 if q2 < 0 or q2 > 100:
                     raise Exception('invalid input'+first)
                 user.add_q2_for_current_sequence(q2)
@@ -1153,7 +1057,6 @@ class MainClass(object):
             elif user.state == ChatState.EXPECT_Q3:
                 
                 q3 = int(first)
-                #if q2 < 0 or q2 > 100 or q2 > user.current_q1():
                 if q3 < 0 or q3 > 100:
                     raise Exception('invalid input'+first)
                 user.add_q3_for_current_sequence(q3)
@@ -1176,23 +1079,24 @@ class MainClass(object):
         # Si el usuario forma parte de main_users...
         if str(user.uid) in main_users:
             # MAIN USER
-            #if DEBUG: self.reply(u, c, 'You are a main user')
+            
             # ...es un usuario principal
             # De forma aleatoria, según el rango main_regular_ratio de valor 0.5, puede que se envíe un ejemplo main o un ejemplo regular.
             if random.random() < main_regular_ratio:
                 # SUBSET SAMPLE
-                #if DEBUG: self.reply(u, c, 'I\'ll try with a main sample')
+                
                 # Se prueba a intentar enviar un nuevo ejemplo main (para los usuarios main)
                 if not self.send_new_sample_main(u, c, user):
-                    #if DEBUG: self.reply(u, c, 'It seems it did not work, sending a regular sample')
+                    
                     # Si no diera cierto, se enviará un nuevo mensaje regular
-                    self.send_new_sample_regular(u, c, user, change=True)
+                    self.send_new_sample_regular(u, c, user)
+                    
             else:
                 # REGULAR SAMPLE
-                #if DEBUG: self.reply(u, c, 'I\'ll try with a regular sample')
+                
                 # Se prueba a intentar enviar un nuevo ejemplo regular
                 if not self.send_new_sample_regular(u, c, user):
-                    #if DEBUG: self.reply(u, c, 'It seems it did not work, sending a main sample')
+                    
                     # Si no diera cierto, se enviará un nuevo mensaje main
                     self.send_new_sample_main(u, c, user)
         else:
@@ -1205,7 +1109,7 @@ class MainClass(object):
                 # Se prueba a intentar enviar un nuevo ejemplo basic
                 if not self.send_new_sample_basic(u, c, user):
                     # Si no diera cierto, se enviará un nuevo mensaje regular
-                    self.send_new_sample_regular(u, c, user, change=True)
+                    self.send_new_sample_regular(u, c, user)
             else:
                 # REGULAR SAMPLE
                 # Se prueba a intentar enviar un nuevo ejemplo regular
@@ -1214,7 +1118,7 @@ class MainClass(object):
                     self.send_new_sample_basic(u, c, user)
 
     # Método de envío de ejemplos que se encarga de enviar un nuevo ejemplo del apartado main
-    def send_new_sample_main(self, u, c, user, change=False):
+    def send_new_sample_main(self, u, c, user):
         found = False
         # Se reordenan aleatoriamente los vídeos del apartado main
         random.shuffle(self.data['files']['main'])
@@ -1227,7 +1131,7 @@ class MainClass(object):
                 break
         # Se valora la bandera found
         if found:
-            #if DEBUG: self.reply(u, c, 'Sending a main-first one')
+            
             # Si es True, el vídeo es nuevo para el usuario. Eso significa que este ejemplo será el actual para el usuario...
             user.current_sample = sample
             #... y será enviado por el bot
@@ -1237,12 +1141,12 @@ class MainClass(object):
             # El método devuelve True, saliendo del método y enviando un vídeo completamente nuevo para el usuario
             return True
         else:
-            #if DEBUG: self.reply(u, c, 'Trying to send a main-dup one')
+            
             # Si la bandera found es False, significa que el vídeo enviado ya ha sido evaluado por el usuario al menos una vez. Por tanto, el resultado será gestionado por el método de envío de mensajes duplicados
             return self.send_new_sample_dup(u, c, user)
 
     # Método de envío de ejemplos que se encarga de enviar ejemplos ya evaluados anteriormente por el usuario
-    def send_new_sample_dup(self, u, c, user, change=False):
+    def send_new_sample_dup(self, u, c, user):
         print('Send new sample DUP')
         found = False
         # Se reordenan aleatoriamente los vídeos del apartado main
@@ -1254,6 +1158,7 @@ class MainClass(object):
                 # Si se dan las condiciones, found tendrá valor true y no se comprobarán más vídeos
                 found = True
                 break
+            
 
         # Se valora la bandera found
         if found:
@@ -1265,18 +1170,13 @@ class MainClass(object):
             # También se envía el ID del video
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0])+'D', kb=self.main_kb)
             # El método devuelve True, saliendo del método y enviando un vídeo repetido por segunda vez para el usuario
-            return True
-        # Si found fuera False, pero la bandera change también lo fuera...
-        elif not change:
-            # ... el resultado será gestionado por el método de envío de mensajes regulares
-            return self.send_new_sample_regular(u, c, user, change=True)
         else:
             # Si se hubieran realizado la evaluación de los videos 2 veces cada uno, el resultado devolvería falso para este método
-            self.reply(u, c, 'You did all samples! Thank you! (this is probably an error).')
-            return False
+            self.reply(u, c, 'You did all main samples! / ¡Has completado todos los ejemplos principales!')
+        return found
 
     # Método de envío de ejemplos que se encarga de enviar ejemplos catalogados como basic
-    def send_new_sample_basic(self, u, c, user, change=False):
+    def send_new_sample_basic(self, u, c, user):
         print('Send new sample BASIC')
         found = False
         # Se reordenan aleatoriamente los vídeos del apartado basic
@@ -1296,11 +1196,14 @@ class MainClass(object):
             c.bot.send_video(chat_id=u.message.chat_id, video=open(sample, 'rb'), supports_streaming=True)
             # También se envía el ID del video
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]), kb=self.main_kb)
+        else:
+            # Si es False, el usuario ha hecho todos los vídeos básicos
+            self.reply(u, c, 'You did all basic samples! / ¡Has completado todos los vídeos básicos!', kb=self.main_kb)
         # Si el valor de found es True se habrá enviado un vídeo, si es False no hará nada
         return found
 
     # Método de envío de ejemplos que se encarga de enviar ejemplos catalogados como regular
-    def send_new_sample_regular(self, u, c, user, change=False):
+    def send_new_sample_regular(self, u, c, user):
         print('Send new sample REGULAR')
         # Se reordenan aleatoriamente los vídeos del apartado regular
         random.shuffle(self.data['files']['regular'])
@@ -1314,7 +1217,7 @@ class MainClass(object):
                 break
 
         # Se valora la bandera found
-        if found is True:
+        if found:
             # Si es True, el vídeo es nuevo para el usuario. Eso significa que este ejemplo será el actual para el usuario...
             user.current_sample = sample
             #... y será enviado por el bot
@@ -1322,17 +1225,10 @@ class MainClass(object):
             # También se envía el ID del video
             self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]), kb=self.main_kb)
             # El método devuelve True, saliendo del método y enviando un vídeo completamente nuevo para el usuario
-            return True
         else:
-            # Si found es False: Si el usuario no es un usuario principal o la bandera change es True
-            if user.uid not in main_users or change:
-                # El usuario ha realizado la evaluación de todos los videos regulares
-                self.reply(u, c, 'You did all samples! Thank you! (this is probably an error).', kb=self.main_kb)
-                return False
-            else:
-                # En caso de que el usuario fuera un usuario principal y la bandera change estuviera en False, el resultado lo evaluaría el método de envío de mensajes para usuarios principales
-                return self.send_new_sample_main(u, c, user, change=True)
-        raise Exception('132131frwejf8jd38')
+            # Si found es False. El usuario ha realizado la evaluación de todos los videos regulares
+            self.reply(u, c, 'You did all regular samples! / ¡Has completado todos los vídeos regulares!', kb=self.main_kb)
+        return found
 
 ######################################    FIN Process methods    ################################################
 
