@@ -34,7 +34,7 @@ admins = []
 x = 0
 while x < len(admin_list_count):
     admins.append(config['admin']['userid' + str(x + 1)])
-    print(admins)
+    #print(admins)
     x+= 1
 
 #Obtain main_users userid data from config
@@ -45,7 +45,7 @@ main_users = admins
 x = 0
 while x < len(main_users_list_count):
     main_users.append(config['main_users']['userid' + str(x + 1)])
-    print(main_users)
+    #print(main_users)
     x+= 1
 
 # Estos son los ratios en los que aparecen los videos según sean basic o main
@@ -125,17 +125,17 @@ class MainClass(object):
 
         self.last_save = time.time()
 
-        print('READ')
-        print('READ')
-        print('USERS:', self.data['users'])
-        print('REGULAR:', self.data['files']['regular'])
-        print('LEN REGULAR:', len(self.data['files']['regular']))
-        print('MAIN:', self.data['files']['main'])
-        print('LEN MAIN:', len(self.data['files']['main']))
-        print('BASIC:', self.data['files']['basic'])
-        print('LEN BASIC:', len(self.data['files']['basic']))
-        print('READ')
-        print('READ')
+        #print('READ')
+        #print('READ')
+        #print('USERS:', self.data['users'])
+        #print('REGULAR:', self.data['files']['regular'])
+        #print('LEN REGULAR:', len(self.data['files']['regular']))
+        #print('MAIN:', self.data['files']['main'])
+        #print('LEN MAIN:', len(self.data['files']['main']))
+        #print('BASIC:', self.data['files']['basic'])
+        #print('LEN BASIC:', len(self.data['files']['basic']))
+        #print('READ')
+        #print('READ')
 
         #Obtain bot token from config
         token = config['bot']['token']
@@ -151,8 +151,8 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('flush',   self.flush_command))
         self.dispatcher.add_handler(CommandHandler('delete',  self.delete_command))
         self.dispatcher.add_handler(CommandHandler('ignore',  self.ignore_command))
-        #self.dispatcher.add_handler(CommandHandler('scan',    self.scan_command))
-        #self.dispatcher.add_handler(CommandHandler('setmain', self.setmain_command))
+        self.dispatcher.add_handler(CommandHandler('scan',    self.scan_command))
+        self.dispatcher.add_handler(CommandHandler('setmain', self.setmain_command))
         self.dispatcher.add_handler(CommandHandler('print',   self.print_command))
         self.dispatcher.add_handler(CommandHandler('len',     self.len_command))
         self.dispatcher.add_handler(CommandHandler('count',   self.count_command))
@@ -183,13 +183,11 @@ class MainClass(object):
             
         #Se crea el keyboard (a_kb) de la primera escala (unacceptable - undesirable) usando ReplyKeyboardMarkup.
         a_kb =  [telegram.KeyboardButton('0 '+emojize(':enraged_face:'))] + [telegram.KeyboardButton(str(x)) for x in range(1, 20)] + [telegram.KeyboardButton('20 '+emojize(':unamused_face:'))] + [telegram.KeyboardButton('<<')]
-        print('LEN A =', len(a_kb))
         a_kb = [ a_kb[0:6], a_kb[6:15], a_kb[15:] ]
         self.a_kb = telegram.ReplyKeyboardMarkup(a_kb, resize_keyboard=True, one_time_keyboard=True)
-        
+
         #Se crea el keyboard (b_kb) de la segunda escala (undesirable - acceptable) usando ReplyKeyboardMarkup.
         b_kb =  [telegram.KeyboardButton('20 '+emojize(':unamused_face:'))] + [telegram.KeyboardButton(str(x)) for x in range(21, 40)] + [telegram.KeyboardButton('40 '+emojize(':thinking_face:'))] + [telegram.KeyboardButton('<<')]
-        print('LEN B =', len(b_kb))
         b_kb = [ b_kb[0:6], b_kb[6:15], b_kb[15:] ]
         self.b_kb = telegram.ReplyKeyboardMarkup(b_kb, resize_keyboard=True, one_time_keyboard=True)
         
@@ -245,26 +243,22 @@ class MainClass(object):
 #############################################################################################################
 #############                         Comandos                     ##########################################
 #############################################################################################################
-    # Método del comando /scan
+    # Método del comando /scan --> permite a un administrador, añadir nuevos videos regulares al conjunto
     def scan_command(self, u=None, c=None):
         if u is not None:
             user = self.get_user_data(u)
             if str(user.uid) not in admins:
                 self.reply(u, c, tr('access', user))
                 return
-
+        # Se obtienen todos los videos de la carpeta videos
         all_files = get_video_files()
-        print('SCAN ALL FILES = ', all_files)
-        print('LEN SCAN ALL FILES = ', len(all_files))
+        # De los videos, se coge el conjunto de videos nuevos (los que no están en regular)
         new_files = list( set(all_files) - set(self.data['files']['regular']) )
-        print('SCAN NEW FILES = ', new_files)
-        print('LEN SCAN NEW FILES = ', len(new_files))
-        print('SCAN FILES DATA = ', self.data['files']['regular'])
-        print('LEN SCAN FILES DATA = ', len(self.data['files']['regular']))
+        # Se añaden los nuevos videos al conjunto de videos regulares
         self.data['files']['regular'] += new_files
-        print('SCAN FILES DATA = ', self.data['files']['regular'])
-        print('LEN SCAN FILES DATA = ', len(self.data['files']['regular']))
+        # Se ordenan los videos regulares de forma aleatoria
         random.shuffle(self.data['files']['regular'])
+        # Se envía el mensaje de la cantidad de videos regulares
         if u is not None:
             self.reply(u, c, str(len(self.data['files']['regular'])))
 
@@ -363,7 +357,7 @@ class MainClass(object):
         # Se envía el mensaje completo
         self.reply(u, c, ret)
 
-    # Método del comando /setmain
+    # Método del comando /setmain --> permite a un administrador añadir videos regulares al conjunto común de los usuarios principales. Debe venir acompañado de un segundo comando (un número entero) que será utilizado como límite de videos que habrá en el conjunto común.
     def setmain_command(self, u, c):
         user = self.get_user_data(u)
         if str(user.uid) not in admins:
@@ -380,13 +374,14 @@ class MainClass(object):
         try:
             set_size = int(text)
             self.setmain(set_size)
+            self.setbasic(initial_basic)
         except Exception as e:
             s = str(e)
             self.reply(u, c, s)
         self.reply(u, c, tr('done', user))
 
     def setmain(self, set_size):
-        print('SET MAIN', set_size)
+        print('SET MAIN = ', set_size)
         random.shuffle(self.data['files']['regular'])
         for i in self.data['files']['regular']:
             if i not in self.data['files']['main']:
@@ -398,8 +393,7 @@ class MainClass(object):
     # Método del comando start
     def start(self, u, c):
         print('-----------------------START comenzar-----------------------------')
-        print('información update = ',u)
-        print('información context = ',c)
+        
         user = self.get_user_data(u)
         
         #Si el usuario ha elegido comenzar de nuevo y estaba en alguna pregunta, se borra la evaluación incompleta del input del usuario
@@ -410,14 +404,11 @@ class MainClass(object):
             except:
                 pass
         
-        print('información conseguida de update = ', user)
-        print('tipo de user = ', type(user))
         user.lang = ''
         user.current_sample = -1
         user.q1 = -1
         user.q2 = -1
         user.state = ChatState.EXPECT_LANGUAGE
-        print('---------------START sigue------------------')
 
         self.reply(u, c, tr('lang', user), kb=self.lang_kb)
         print('--------------------START termina----------------------------')
@@ -456,7 +447,7 @@ class MainClass(object):
 
     # Método del comando ignore --> ignora el vídeo actual y envía otro
     def ignore_command(self, u, c):
-        print('----------DEF IGNORE_COMMAND---------')
+        
         user = self.get_user_data(u)
         # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
         if user.state == ChatState.UNINITIALISED:
@@ -475,7 +466,6 @@ class MainClass(object):
             self.send_q1_question(u, c, user)
             user.state = ChatState.EXPECT_Q1
             self.check_flush()
-        print('----------TERMINA IGNORE_COMMAND---------')
 
     #Method to send user a message containing their scoring data
     def user_backup_command(self, u, c):
@@ -547,7 +537,7 @@ class MainClass(object):
         
     # Método del comando /actual_sample --> el usuario podrá recuperar el vídeo que estaba evaluando por si no se acordara
     def actual_sample_command(self, u, c):
-        print('----------DEF ACTUAL SAMPLE---------')
+        
         #retrieve user data
         user = self.get_user_data(u)
         # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
@@ -567,11 +557,11 @@ class MainClass(object):
                 self.send_q2_question(u, c, user)
             elif user.state == ChatState.EXPECT_Q3:
                 self.send_q3_question(u, c, user)
-        print('----------FIN ACTUAL SAMPLE---------')
+        
  
     # Método del comando /send_input --> el usuario podrá recuperar la información de videos realizados
     def send_input_command(self, u, c):
-        print('----------DEF SEND INPUT---------')
+        
         #retrieve user data
         user = self.get_user_data(u)
         # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
@@ -583,12 +573,17 @@ class MainClass(object):
         else:
             ret = ''
             self.reply(u, c, 'INPUT USER: '+str(user.uname)+' ('+str(user.uid)+')')
+            # Si el usuario, no ha hecho ningún video aún, se le notificará
+            if user.get_len_videos() == 0:
+                self.reply(u, c, 'no input yet')
+                return
             # Se va a recorrer la lista de usuarios de la base de datos y se va a obtener la información de cada uno (su uid, su nombre y el número de vídeos evaluados)
-            for k, v in sorted(user.input.items()):
+            #for k, v in sorted(user.input.items()):
+            for k, v in user.input.items():
                 ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
             # Se envía el mensaje completo
             self.reply(u, c, ret)
-        print('----------FIN SEND INPUT---------')
+        
 
               
 ########################################################################## FIN comandos ########################################
@@ -599,7 +594,7 @@ class MainClass(object):
 
     #creates file with user's scoring data
     def file_score_user(self, userid, score_list):
-        print('----------DEF FILE_SCORE_USER---------')
+        
         #conditional check if user has any score data
         if score_list == []:
             print("NOT FOUND")
@@ -618,12 +613,12 @@ class MainClass(object):
                     file.write("%s" % score_list)
                     file.write("\n")
                     file.close()
-        print('----------TERMINA FILE_SCORE_USER---------')
+        
 
 
     # Método para obtener los datos del usuario del updater, como su id y su username, y guardarlos en una clase UserInfo
     def get_user_data(self, src):
-        print('-------DEF GET USER DATA----------------')
+        
         uname = None
         # Si el tipo que le llega es Update, se obtiene el id y el username del usuario. Si fuera un entero, el uid sería el propio dato. Si no fuera nada de eso, se lanza una excepción
         if type(src) == telegram.update.Update:
@@ -644,7 +639,7 @@ class MainClass(object):
         except Exception:
             ret = UserInfo(uid, uname)
             self.data['users'][uid] = ret
-        print('-------TERMINA GET USER DATA----------------')
+        
         return ret
 
 ############################################ FIN conseguir cosas del usuario ########################################
@@ -655,62 +650,38 @@ class MainClass(object):
 
     # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def reply(self, u, c, text, kb=None):
-        print('-------DEF REPLY----------------')
-        
-        print('UID', u.effective_chat.id)
-        print('TEXTO A ENVIAR = ', text)
-
         ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
-        print('-------TERMINA REPLY----------------')
 
     # Método que envía un mensaje de respuesta con un determinado mensaje y que configura (o no) un keyboard específico
     def set_keyboard(self, u, c, text, kb=None):
-        print('-------DEF SET KEYBOARD----------------')
-        
-        print('UID', u.effective_chat.id)
-        print('TEXTO A ENVIAR = ', text)
-        
         ret = c.bot.send_message(chat_id=u.effective_chat.id, text=text, reply_markup=kb)
-        print('-------TERMINA SET KEYBOARD----------------')
 
     # Método que se encarga de enviar la primera pregunta al usuario
     def send_q1_question(self, u, c, user):
-        print('--------DEF SEND_Q1_QUESTION----------')
         self.reply(u, c, tr('q1question', user))
         self.reply(u, c, tr('give_me_score', user), kb=self.main_kb)
-        print('--------TERMINA SEND_Q1_QUESTION----------')
 
     # Método que se encarga de enviar la confirmación de la primera pregunta al usuario
     def send_q1_confirmation(self, u, c, user):
-        print('--------DEF SEND_Q1_CONFIRMATION----------')
         self.reply(u, c, tr('q1confirmation', user)+emojize(':green_circle:')+emojize(':red_circle:')+emojize(':red_circle:')+emojize(':smiling_face_with_smiling_eyes:'))
-        print('--------TERMINA SEND_Q1_CONFIRMATION----------')
 
     # Método que se encarga de enviar la segunda pregunta al usuario
     def send_q2_question(self, u, c, user):
-        print('--------DEF SEND_Q2_QUESTION----------')
         self.reply(u, c, tr('q2question', user))
         self.reply(u, c, tr('give_me_score', user), kb=self.main_kb)
-        print('--------TERMINA SEND_Q2_QUESTION----------')
 
     # Método que se encarga de enviar la confirmación de la segunda pregunta al usuario
     def send_q2_confirmation(self, u, c, user):
-        print('--------DEF SEND_Q2_CONFIRMATION----------')
         self.reply(u, c, tr('q2confirmation', user)+emojize(':green_circle:')+emojize(':green_circle:')+emojize(':red_circle:')+emojize(':smiling_face_with_smiling_eyes:'))
-        print('--------TERMINA SEND_Q2_CONFIRMATION----------')
 
     # Método que se encarga de enviar la tercera pregunta al usuario
     def send_q3_question(self, u, c, user):
-        print('--------DEF SEND_Q3_QUESTION----------')
         self.reply(u, c, tr('q3question', user))
         self.reply(u, c, tr('give_me_score', user), kb=self.main_kb)
-        print('--------TERMINA SEND_Q3_QUESTION----------')
 
     # Método que se encarga de enviar la confirmación de la tercera pregunta al usuario
     def send_q3_confirmation(self, u, c, user):
-        print('--------DEF SEND_Q3_CONFIRMATION----------')
         self.reply(u, c, tr('q3confirmation', user)+emojize(':green_circle:')+emojize(':green_circle:')+emojize(':green_circle:')+emojize(':star-struck:'))
-        print('--------TERMINA SEND_Q3_CONFIRMATION----------')
         
     # Mensaje de gracias
     def send_thanks(self, u, c, user):
@@ -754,7 +725,6 @@ class MainClass(object):
                 date_timestamp = datetime.now()
                 date_timestamp_format = date_timestamp.strftime("%d/%m/%Y - (%H:%M:%S)")
                 video_id = str(user.current_sample.split('/')[1].split('.')[0])
-                print(video_id)
                 score_data.append(date_timestamp_format)
                 score_data.append(video_id)
                 score_data.append(user.uid)
@@ -763,7 +733,6 @@ class MainClass(object):
             try:
                 # Se obtiene el texto enviado por el usuario
                 text_return_q1=self.text_process(u)
-                print('TEXT RETURN = ', text_return_q1)
                 # El texto de respuesta a la primera pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q1):
                     # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
@@ -784,7 +753,6 @@ class MainClass(object):
             try:
                 # Se obtiene el texto enviado por el usuario
                 text_return_q2=self.text_process(u)
-                print('TEXT RETURN = ', text_return_q2)
                 # El texto de respuesta a la segunda pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q2):
                     # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
@@ -804,7 +772,6 @@ class MainClass(object):
             try:
                 # Se obtiene el texto enviado por el usuario
                 text_return_q3=self.text_process(u)
-                print('TEXT RETURN = ', text_return_q3)
                 # El texto de respuesta a la tercera pregunta es procesada en el método process_question
                 if self.process_question(u, c, user, text_return_q3):
                     # Si la respuesta es válida, se añade el valor a la lista de datos de puntuación
@@ -857,7 +824,6 @@ class MainClass(object):
                 date_timestamp = datetime.now()
                 date_timestamp_format = date_timestamp.strftime("%d/%m/%Y - (%H:%M:%S)")
                 video_id = str(user.current_sample.split('/')[1].split('.')[0])
-                print(video_id)
                 score_data.append(date_timestamp_format)
                 score_data.append(video_id)
                 score_data.append(user.uid)
@@ -874,7 +840,6 @@ class MainClass(object):
                     print('not process_q1')
             except:
                 self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
-                print('holiiiii3')
         elif user.state == ChatState.EXPECT_Q2:
             #calls voice_process method to convert voice to text. The response is sent to process_qw to validate score
             #Q2 confirmation message sent, and user is sent new video clip and asked for Q1 score
@@ -890,7 +855,6 @@ class MainClass(object):
                     print('not process_q2')
             except:
                 self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
-                print('holiiiii4')
         #if user's chatstate not in any of the enum values, the below message is sent.
         else:
             c.bot.send_message(chat_id=u.effective_chat.id, text="It seems that the chat is not initialised. We'll restart...")
@@ -911,30 +875,24 @@ class MainClass(object):
 
     # Método encargado de configurar el idioma elegido por el usuario. El texto puede detectar inglés o español
     def process_language(self, u, c, user):
-        print('------COMIENZA PROCESS_LANGUAGE-----')
         # Se obtiene el mensaje de texto enviado por el usuario que se encuentra en la variable u
         inp = u.message.text.lower().strip()
         if   len([x for x in ['english',   'ingles', 'inglés']                if inp.find(x)!=-1]) > 0:
             user.lang = 'en'
-            print('------TERMINA PROCESS_LANGUAGE-----')
             return True
         elif len([x for x in [ 'spanish', 'espanol', 'español', 'castellano'] if inp.find(x)!=-1]) > 0 :
             user.lang = 'es'
-            print('------TERMINA PROCESS_LANGUAGE-----')
             return True
         else:
             print('__'+inp+'__')
-            print('------TERMINA PROCESS_LANGUAGE-----')
             return False
     
     # Este método sirve para obtener el mensaje de texto enviado por el usuario y obtener la primera palabra. Esto se utiliza en text_echo a la hora de procesar el valor de las preguntas en un rango o en un número
     def text_process(self, u):
-        print('------COMIENZA TEXT_PROCESS-----')
         # Se obtiene el mensaje de texto enviado por el usuario que se encuentra en la variable u
         text = u.message.text.lower().strip()
         # Se consigue la primera palabra del mensaje de texto
         first = str(text.split()[0])
-        print('------TERMINA TEXT_PROCESS-----')
         return first
 
     #Function to process voice and returns text conversion.
@@ -991,8 +949,6 @@ class MainClass(object):
 
     # Método que procesa los rangos de evaluación si se hubieran pulsado los botones de rango o de <<
     def process_sequence(self, u, c, user, first):
-        print('FIRST = ', first)
-        print('-------DEF PROCESS_SEQUENCE------')
         # Si la primera palabra es unacceptable, se envía el keyboard de rango 0 - 19
         if first == 'unacceptable':
             self.set_keyboard(u, c, tr('choose_value', user), self.a_kb)
@@ -1030,13 +986,12 @@ class MainClass(object):
 
     # Método que procesa la evaluación de una pregunta
     def process_question(self, u, c, user, first):
-        print('-------DEF PROCESS_QUESTION------')
         # Se comprueba si la primera palabra es de un rango o de un número. En el primer caso, se sale del método con false.
         if not self.process_sequence(u, c, user, first):
             return False
 
         if len(first) > 3:
-            raise Exception('invalid input'+first)        
+            raise Exception('invalid input '+first)        
         
         # Si es un dato numérico, dependiendo del estado de user.state, se comprueba si el valor (q1, q2 o q3) está entre 0 y 100. Después se añade el valor al usuario. Si algo falla, se lanza una excepción.
         try:
@@ -1044,26 +999,26 @@ class MainClass(object):
                 
                 q1 = int(first)
                 if q1 < 0 or q1 > 100:
-                    raise Exception('invalid input'+first)
+                    raise Exception('invalid input '+first)
                 user.add_q1_for_current_sequence(q1)
                 
             elif user.state == ChatState.EXPECT_Q2:
                 
                 q2 = int(first)
                 if q2 < 0 or q2 > 100:
-                    raise Exception('invalid input'+first)
+                    raise Exception('invalid input '+first)
                 user.add_q2_for_current_sequence(q2)
                 
             elif user.state == ChatState.EXPECT_Q3:
                 
                 q3 = int(first)
                 if q3 < 0 or q3 > 100:
-                    raise Exception('invalid input'+first)
+                    raise Exception('invalid input '+first)
                 user.add_q3_for_current_sequence(q3)
                 
         except Exception:
-            print('Invalid input 3', first)
-            raise Exception('invalid input'+first)
+            print('Invalid input ', first)
+            raise Exception('invalid input '+first)
         return True
 
 ######################################    FIN Process methods    ################################################
