@@ -34,9 +34,8 @@ admins = []
 x = 0
 while x < len(admin_list_count):
     admins.append(config['admin']['userid' + str(x + 1)])
-    #print(admins)
     x+= 1
-
+print('ADMINS = ',admins)
 #Obtain main_users userid data from config
 main_users_list_count = list(config['main_users'])
 
@@ -45,9 +44,8 @@ main_users = admins
 x = 0
 while x < len(main_users_list_count):
     main_users.append(config['main_users']['userid' + str(x + 1)])
-    #print(main_users)
     x+= 1
-
+print('MAIN USERS = ',main_users)
 # Estos son los ratios en los que aparecen los videos según sean basic o main
 main_regular_ratio = float(config['ratio']['main_regular_ratio'])
 basic_regular_ratio = float(config['ratio']['basic_regular_ratio'])
