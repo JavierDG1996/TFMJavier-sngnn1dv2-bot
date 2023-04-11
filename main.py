@@ -522,7 +522,7 @@ class MainClass(object):
             self.reply(u, c, ret)
             # También se envía la posición del usuario en el ranking
             ret_pos = ''
-            ret_pos += 'Tu posición es la número '+ str(list(users_len_videos_sorted).index(user.uid)+1) + ', con un total de '+ str(len(self.data['users'][user.uid].input)) + ' vídeos evaluados '
+            ret_pos += tr('ranking_msg_1', user)+ ' ' + str(list(users_len_videos_sorted).index(user.uid)+1) + ' ' + tr('ranking_msg_2', user)+' ' + str(len(self.data['users'][user.uid].input)) + ' '
             if list(users_len_videos_sorted).index(user.uid)+1 == 1:
                 ret_pos += emojize(':1st_place_medal:')
             elif list(users_len_videos_sorted).index(user.uid)+1 == 2:

@@ -176,3 +176,19 @@ def tr(msg, u):
             return config['dataset_survey_messages_es']['sending_sample']
         else:
             Exception('Unknown language "'+u.lang+'"')
+            
+    if msg == "ranking_msg_1":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['ranking_msg_1']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['ranking_msg_1']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
+            
+    if msg == "ranking_msg_2":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['ranking_msg_2']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['ranking_msg_2']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
