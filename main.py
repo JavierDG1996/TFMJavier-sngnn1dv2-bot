@@ -163,7 +163,6 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('send_input', self.send_input_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
-        self.dispatcher.add_handler(MessageHandler(Filters.voice & (~Filters.command), self.voice_echo))
         
         #Se crea el keyboard (lang_kb) para elegir idioma usando ReplyKeyboardMarkup.
         self.lang_kb = telegram.ReplyKeyboardMarkup(
@@ -798,72 +797,6 @@ class MainClass(object):
         self.check_flush()
         print('-------------------------TERMINA LLAMADA A TEXT_ECHO-------------------------')
 
-    #Voice handling method. Parameters are the user information and the bot's context data.
-    #starts survey and calls methods based on the ChatState.
-    def voice_echo(self, u, c):
-        #create variable to hold user chat information
-        user = self.get_user_data(u)
-        #initialise chat if it has yet to be started. Requires any user keyboard input to start
-        if user.state == ChatState.UNINITIALISED:
-            self.start(u, c)
-        #confirm user language has been entered and saves it, else asks for language.
-        elif user.state == ChatState.EXPECT_LANGUAGE:
-            #Start survey and send a video clip and asks user for q1 score
-            if self.process_language(u, c, user):
-                self.send_new_sample(u, c, user)
-                self.send_q1_question(u, c, user)
-                user.state = ChatState.EXPECT_Q1
-            else:
-                self.reply(u, c, tr('lang', user), kb=self.lang_kb)
-        #If Q1 response sent by user
-        elif user.state == ChatState.EXPECT_Q1:
-            #appends to array to store user survey information. (To be added to the user specific backup file)
-            if(len(score_data)==0):
-                date_timestamp = datetime.now()
-                date_timestamp_format = date_timestamp.strftime("%d/%m/%Y - (%H:%M:%S)")
-                video_id = str(user.current_sample.split('/')[1].split('.')[0])
-                score_data.append(date_timestamp_format)
-                score_data.append(video_id)
-                score_data.append(user.uid)
-            #calls voice_process method to convert voice to text. The response is sent to process_q1 to validate score
-            #Q1 confirmation message sent, and user is asked for Q2 score
-            try:
-                voice_return_q1=self.voice_process(u)
-                if self.process_q1(u, c, user, voice_return_q1):
-                    score_data.append('Q1: '+voice_return_q1)
-                    self.send_q1_confirmation(u, c, user)
-                    self.send_q2_question(u, c, user)
-                    user.state = ChatState.EXPECT_Q2
-                else:
-                    print('not process_q1')
-            except:
-                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
-        elif user.state == ChatState.EXPECT_Q2:
-            #calls voice_process method to convert voice to text. The response is sent to process_qw to validate score
-            #Q2 confirmation message sent, and user is sent new video clip and asked for Q1 score
-            try:
-                voice_return_q2=self.voice_process(u)
-                if self.process_q2(u, c, user, voice_return_q2):
-                    score_data.append('Q2: '+voice_return_q2)
-                    self.send_q2_confirmation(u, c, user)
-                    self.send_new_sample(u, c, user)
-                    self.send_q1_question(u, c, user)
-                    user.state = ChatState.EXPECT_Q1
-                else:
-                    print('not process_q2')
-            except:
-                self.reply(u, c, tr('notvalid', user), kb=self.main_kb)
-        #if user's chatstate not in any of the enum values, the below message is sent.
-        else:
-            c.bot.send_message(chat_id=u.effective_chat.id, text="It seems that the chat is not initialised. We'll restart...")
-            self.start(u, c)
-        #Score_data is populated with backup data when 1 full score is given
-        #score_data is sent to be saved, and score_data cleared to recieve next scoring backup data
-        #(user id, timestamp, video ids, Q1 score, Q2 score)
-        if(len(score_data)==5):
-            self.file_score_user(user.uid, score_data)
-            score_data.clear()
-        self.check_flush()
 
 ######################################## FIN MessageHandler Methods ########################################
 
@@ -892,58 +825,6 @@ class MainClass(object):
         # Se consigue la primera palabra del mensaje de texto
         first = str(text.split()[0])
         return first
-
-    #Function to process voice and returns text conversion.
-    def voice_process(self, u):
-        #Voice grabbed from user's message to bot
-        #Filepath assigned and local directory checked/created for voice files.
-        voice = u.message.voice.file_id.strip()
-        bot=telegram.Bot(token=config['bot']['token'])
-        newfile=bot.getFile(voice)
-        filepath=newfile.file_path.strip()
-        filepath_request=requests.get(filepath, allow_redirects=True)
-        voice_files=[]
-        voice_directory='game_voice_notes'
-        if not os.path.exists(voice_directory):
-            os.makedirs(voice_directory)
-
-        #Voice file directory parsed and voice_files list writes user's voice message to a file
-        directory=os.path.normpath(os.getcwd()+os.sep+voice_directory+os.sep)
-        for r, d, f in os.walk(directory):
-            for file in f:
-                if 'voice' in file:
-                    voice_files.append(file)
-        voice_file_number=len(voice_files)+1
-        open(os.path.join(directory,'voice'+str(voice_file_number)+'.oga'), 'wb').write(filepath_request.content)
-
-        #Assign api credentials required to access ibm_watson
-        api_key=config['ibm_watson']['api_key']
-        api_url=config['ibm_watson']['api_url']
-        # Setup Service
-        authenticator=IAMAuthenticator(api_key)
-        stt=SpeechToTextV1(authenticator=authenticator)
-        stt.set_service_url(api_url)
-
-        #Read current voice file
-        #Sends request to ibm_watson speechToText service containing voice file and the type of audio. Then Return result
-        with open(os.path.join(directory, 'voice'+str(voice_file_number)+'.oga'), 'rb') as voice_file:
-            ibm_request=stt.recognize(audio=voice_file, content_type='audio/ogg', model='en-UK_NarrowbandModel', continuous=True).get_result()
-
-        #Assign results of ibm_request
-        #Text transcript
-        #Confidence of the service's conversion of speech to text
-        voice_text=ibm_request['results'][0]['alternatives'][0]['transcript']
-        confidence=ibm_request['results'][0]['alternatives'][0]['confidence']
-
-        #Verification of text return as an integer between 0 - 100
-        voice_integer_number=str(text_to_integer(voice_text))
-
-        print(f'Voice Text: {voice_text}')
-        print(f'Voice Number: {voice_integer_number}')
-        print(f'Voice Confidence: {confidence}')
-
-        #Return text score between 0-100
-        return voice_integer_number
 
     # Método que procesa los rangos de evaluación si se hubieran pulsado los botones de rango o de <<
     def process_sequence(self, u, c, user, first):
