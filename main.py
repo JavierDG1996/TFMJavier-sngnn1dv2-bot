@@ -49,8 +49,8 @@ print('MAIN USERS = ',main_users)
 # Estos son los ratios en los que aparecen los videos según sean basic o main
 main_regular_ratio = float(config['ratio']['main_regular_ratio'])
 basic_regular_ratio = float(config['ratio']['basic_regular_ratio'])
-initial_basic = float(config['ratio']['initial_basic'])
-initial_main = float(config['ratio']['initial_main'])
+initial_basic = int(config['ratio']['initial_basic'])
+initial_main = int(config['ratio']['initial_main'])
 
 DEBUG = True
 # Lista de puntuación
