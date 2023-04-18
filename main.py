@@ -161,6 +161,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('ranking', self.ranking_command))
         self.dispatcher.add_handler(CommandHandler('actual_sample', self.actual_sample_command))
         self.dispatcher.add_handler(CommandHandler('send_input', self.send_input_command))
+        self.dispatcher.add_handler(CommandHandler('search_video', self.search_video_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         
@@ -433,11 +434,29 @@ class MainClass(object):
                 return
             sid = u.message.text.split()[1]
             try:
+                
+                # Si el sid acaba con una D, es un video duplicado
                 if sid.endswith('D'):
+                    # Se borra el video duplicado del input, el cual se diferencia del original porque acaba con una D
                     del user.input['videos/'+sid[:-1]+'.mp4'+'D']
+                    self.reply(u, c, tr('donestill', user))
+                    curr_sample = user.current_sample.split('/')[1].split('.')[0]
+                    # Si el video que se está borrando es el que se estaba evaluando, se envía un nuevo ejemplo
+                    if curr_sample == sid[:-1]:
+                        self.send_new_sample(u, c, user)
+                        self.send_q1_question(u, c, user)
+                        user.state = ChatState.EXPECT_Q1
                 else:
+                    # Si el id no acabara en D, es un primer video. Y se borra del input
                     del user.input['videos/'+sid+'.mp4']
-                self.reply(u, c, tr('donestill', user))
+                    self.reply(u, c, tr('donestill', user))
+                    curr_sample = user.current_sample.split('/')[1].split('.')[0]
+                    # Si el video que se está borrando es el que se estaba evaluando, se envía un nuevo ejemplo
+                    if curr_sample == sid:
+                        self.send_new_sample(u, c, user)
+                        self.send_q1_question(u, c, user)
+                        user.state = ChatState.EXPECT_Q1
+                
             except:
                 self.reply(u, c, tr('cannotdelete', user))
             self.check_flush()
@@ -577,11 +596,40 @@ class MainClass(object):
             # Se va a recorrer la lista de usuarios de la base de datos y se va a obtener la información de cada uno (su uid, su nombre y el número de vídeos evaluados)
             #for k, v in sorted(user.input.items()):
             for k, v in user.input.items():
-                ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
+                if k.endswith('D'):
+                    ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + 'D' + ' --- DATOS: ' + str(v) + '\n'
+                else:
+                    ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
             # Se envía el mensaje completo
             self.reply(u, c, ret)
         
-
+    # Método del comando /search_video --> el usuario podrá ver un video determinado buscandolo por su id
+    def search_video_command(self, u, c):
+        
+        #retrieve user data
+        user = self.get_user_data(u)
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
+            self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, se devuelve el video correspondiente al id
+        else:
+            text = u.message.text.split()
+            if len(text) != 2:
+                self.reply(u, c, tr('syntax', user))
+                return
+            sid = u.message.text.split()[1]
+            
+            video = 'videos/'+sid+'.mp4'
+            
+            if os.path.isfile(video):
+                self.reply(u, c, tr('sending_sample', user))
+            
+                c.bot.send_video(chat_id=u.message.chat_id, video=open(video, 'rb'), supports_streaming=True)
+                self.reply(u, c, tr('video_found', user)+' '+str(sid))
+            else:
+                self.reply(u, c, tr('not_video_found', user))
               
 ########################################################################## FIN comandos ########################################
 

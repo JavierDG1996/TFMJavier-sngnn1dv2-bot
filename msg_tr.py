@@ -192,3 +192,19 @@ def tr(msg, u):
             return config['dataset_survey_messages_es']['ranking_msg_2']
         else:
             Exception('Unknown language "'+u.lang+'"')
+            
+    if msg == "video_found":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['video_found']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['video_found']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
+
+    if msg == "not_video_found":
+        if u.lang == 'en':
+            return config['dataset_survey_messages_en']['not_video_found']
+        elif u.lang == 'es':
+            return config['dataset_survey_messages_es']['not_video_found']
+        else:
+            Exception('Unknown language "'+u.lang+'"')
