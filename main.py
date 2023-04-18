@@ -621,7 +621,10 @@ class MainClass(object):
                 return
             sid = u.message.text.split()[1]
             
-            video = 'videos/'+sid+'.mp4'
+            if sid.endswith('D'):
+                video = 'videos/'+sid[:-1]+'.mp4'
+            else:
+                video = 'videos/'+sid+'.mp4'
             
             if os.path.isfile(video):
                 self.reply(u, c, tr('sending_sample', user))
