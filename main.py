@@ -162,6 +162,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('actual_sample', self.actual_sample_command))
         self.dispatcher.add_handler(CommandHandler('send_input', self.send_input_command))
         self.dispatcher.add_handler(CommandHandler('search_video', self.search_video_command))
+        self.dispatcher.add_handler(CommandHandler('add_main_user', self.add_main_user_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         
@@ -633,7 +634,38 @@ class MainClass(object):
                 self.reply(u, c, tr('video_found', user)+' '+str(sid))
             else:
                 self.reply(u, c, tr('not_video_found', user))
-              
+
+    # Método del comando /add_main_user --> un administrador podrá añadir a una persona como evaluador main
+    def add_main_user_command(self, u, c):
+        
+        #retrieve user data
+        user = self.get_user_data(u)
+        # Se comprueba que el usuario que ha ejecutado el comando sea un administrador
+        if str(user.uid) not in admins:
+            self.reply(u, c, tr('access', user))
+            return
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
+            self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, si es administrador podrá añadir a un usuario nuevo como evaluador principal
+        else:
+            text = u.message.text.split()
+            if len(text) != 2:
+                self.reply(u, c, tr('syntax', user))
+                return
+            sid = u.message.text.split()[1]
+            # Se comprueba que el usuario no sea evaluador main para que no se repita en la lista
+            if sid in main_users:
+                self.reply(u, c, 'usuario '+str(sid)+' ya estaba añadido a la lista de main users')
+                return
+            # Se añade al usuario a la lista main_users y se devuelve la lista con sus ids
+            main_users.append(sid)
+            self.reply(u, c, 'usuario '+str(sid)+' añadido a la lista de main users')
+            self.reply(u, c, 'Lista de main users: '+str(main_users))
+            
+                      
 ########################################################################## FIN comandos ########################################
 
 #############################################################################################################
