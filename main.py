@@ -163,6 +163,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('send_input', self.send_input_command))
         self.dispatcher.add_handler(CommandHandler('search_video', self.search_video_command))
         self.dispatcher.add_handler(CommandHandler('add_main_user', self.add_main_user_command))
+        self.dispatcher.add_handler(CommandHandler('show_main_user', self.show_main_user_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         
@@ -534,7 +535,7 @@ class MainClass(object):
                     ret += emojize(':3rd_place_medal:')
                 else:
                     ret += str(i)
-                ret += ' - ' + str(v.uname) + ' (' + str(k) + ') - Videos: ' + str(v.get_len_videos()) + '\n'
+                ret += ' - ' + str(v.uname) + ' - Videos: ' + str(v.get_len_videos()) + '\n'
                 i+=1
                 
             # Se envía el mensaje completo
@@ -665,6 +666,23 @@ class MainClass(object):
             self.reply(u, c, 'usuario '+str(sid)+' añadido a la lista de main users')
             self.reply(u, c, 'Lista de main users: '+str(main_users))
             
+    # Método del comando /show_main_user --> un administrador podrá conocer la lista de ids que son main users
+    def show_main_user_command(self, u, c):
+        
+        #retrieve user data
+        user = self.get_user_data(u)
+        # Se comprueba que el usuario que ha ejecutado el comando sea un administrador
+        if str(user.uid) not in admins:
+            self.reply(u, c, tr('access', user))
+            return
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
+            self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, si es administrador podrá conocer la lista de ids que son main users
+        else:
+            self.reply(u, c, 'Lista de main users: '+str(main_users))
                       
 ########################################################################## FIN comandos ########################################
 
