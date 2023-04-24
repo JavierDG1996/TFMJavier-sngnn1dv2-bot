@@ -809,6 +809,8 @@ class MainClass(object):
             print('------------TEXT_ECHO STATE EXPECT_LANGUAGE---------------')
             if self.process_language(u, c, user):
                 self.send_welcome(u, c, user)
+                #El usuario necesitará información para comenzar
+                self.reply(u, c, tr('help', user))
                 self.send_new_sample(u, c, user)
                 self.send_q1_question(u, c, user)
                 user.state = ChatState.EXPECT_Q1
