@@ -164,6 +164,7 @@ class MainClass(object):
         self.dispatcher.add_handler(CommandHandler('search_video', self.search_video_command))
         self.dispatcher.add_handler(CommandHandler('add_main_user', self.add_main_user_command))
         self.dispatcher.add_handler(CommandHandler('show_main_user', self.show_main_user_command))
+        self.dispatcher.add_handler(CommandHandler('getinput_user', self.getinput_user_command))
         #Añadimos los gestores de mensajes usando MessageHandler. Este MessageHandler solo se activará y permitirá cambios o updates, llamando a text_echo, cuando lo digan los filtros (Filters). En este caso, solo permitirá cambios cuando aparezcan mensajes del usuario y que estos no empiecen por comandos.
         self.dispatcher.add_handler(MessageHandler(Filters.text & (~Filters.command), self.text_echo))
         
@@ -567,8 +568,19 @@ class MainClass(object):
         else:
             # También se envía de nuevo la pregunta que el usuario está contestando
             self.reply(u, c, tr('sending_sample', user))
-            c.bot.send_video(chat_id=u.message.chat_id, video=open(user.current_sample, 'rb'), supports_streaming=True)
-            self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]))
+
+            
+            if user.current_sample.endswith('D'):
+                #video = 'videos/'+sid[:-1]+'.mp4'
+                c.bot.send_video(chat_id=u.message.chat_id, video=open(user.current_sample[:-1], 'rb'), supports_streaming=True)
+                self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0])+'D')
+            else:
+                #video = 'videos/'+sid+'.mp4'
+                c.bot.send_video(chat_id=u.message.chat_id, video=open(user.current_sample, 'rb'), supports_streaming=True)
+                self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]))
+            
+            #c.bot.send_video(chat_id=u.message.chat_id, video=open(user.current_sample, 'rb'), supports_streaming=True)
+            #self.reply(u, c, 'ID: '+str(user.current_sample.split('/')[1].split('.')[0]))
             if user.state == ChatState.EXPECT_Q1:
                 self.send_q1_question(u, c, user)
             elif user.state == ChatState.EXPECT_Q2:
@@ -577,7 +589,7 @@ class MainClass(object):
                 self.send_q3_question(u, c, user)
         
  
-    # Método del comando /send_input --> el usuario podrá recuperar la información de videos realizados
+    # Método del comando /send_input --> el usuario podrá recuperar la información de videos realizados a través de un documento
     def send_input_command(self, u, c):
         
         #retrieve user data
@@ -589,21 +601,41 @@ class MainClass(object):
             self.reply(u, c, tr('lang', user), kb=self.lang_kb)
         # Si el usuario está en otro estado, se recupera el video que estaba evaluando
         else:
-            ret = ''
+            
             self.reply(u, c, 'INPUT USER: '+str(user.uname)+' ('+str(user.uid)+')')
             # Si el usuario, no ha hecho ningún video aún, se le notificará
             if user.get_len_videos() == 0:
                 self.reply(u, c, 'no input yet')
                 return
-            # Se va a recorrer la lista de usuarios de la base de datos y se va a obtener la información de cada uno (su uid, su nombre y el número de vídeos evaluados)
+            ret = ''
+            i = 1
+            # Se va a recorrer la lista de videos puntuados por el usuario y se mostrarán sus puntuaciones y su fecha en la que fue evaluado cada video
             #for k, v in sorted(user.input.items()):
             for k, v in user.input.items():
                 if k.endswith('D'):
-                    ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + 'D' + ' --- DATOS: ' + str(v) + '\n'
+                    ret += str(i) + '. VIDEO ' + str(k.split('/')[1].split('.')[0]) + 'D' + ' --- DATOS: ' + str(v) + '\n'
                 else:
-                    ret += 'VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
-            # Se envía el mensaje completo
-            self.reply(u, c, ret)
+                    ret += str(i) + '. VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
+                i+=1
+            
+            # Si el archivo no existe, se crea uno y el input del usuario es escrito en él
+            user_file = "send_input_"+str(user.uid)+".txt"
+            # Se crea el archivo
+            if not os.path.isfile(user_file):
+                with open(user_file, 'w+') as file:
+                    # Se añade el mensaje al archivo
+                    file.write(ret)
+                    # Se cierra el flujo
+                    file.close()
+            else:
+                self.reply(u, c, 'Document already exists')
+            
+            # Se envía el archivo
+            c.bot.send_document(chat_id=u.message.chat_id, document=open('send_input_'+str(user.uid)+'.txt', 'rb'))
+            # Se elimina el archivo
+            os.remove("send_input_"+str(user.uid)+".txt")
+            
+            
         
     # Método del comando /search_video --> el usuario podrá ver un video determinado buscandolo por su id
     def search_video_command(self, u, c):
@@ -683,7 +715,75 @@ class MainClass(object):
         # Si el usuario está en otro estado, si es administrador podrá conocer la lista de ids que son main users
         else:
             self.reply(u, c, 'Lista de main users: '+str(main_users))
-                      
+
+
+    # Método del comando /getinput_user --> un administrador puede conocer el input de un usuario determinado aportando el id de ese usuario
+    def getinput_user_command(self, u, c):
+        
+        #retrieve user data
+        user = self.get_user_data(u)
+        # Se comprueba que el usuario que ha ejecutado el comando sea un administrador
+        if str(user.uid) not in admins:
+            self.reply(u, c, tr('access', user))
+            return
+        # Si el usuario tiene el estado de UNINITIALISED o EXPECT_LANGUAGE, se le obliga a elegir el idioma
+        if user.state == ChatState.UNINITIALISED:
+            self.start(u, c)
+        elif user.state == ChatState.EXPECT_LANGUAGE:
+            self.reply(u, c, tr('lang', user), kb=self.lang_kb)
+        # Si el usuario está en otro estado, si es administrador podrá conocer el input de dicho usuario
+        else:
+            text = u.message.text.split()
+            # Se comprueba que hay un segundo argumento
+            if len(text) != 2:
+                self.reply(u, c, tr('syntax', user))
+                return
+            # Se obtiene el id del usuario que se necesita el input
+            sid = u.message.text.split()[1]
+            # Se ve si el usuario existe o no
+            try:
+                user_ajeno = self.data['users'][int(sid)]
+            except Exception:
+                self.reply(u, c, 'Error en la recuperación de datos del usuario ajeno. Puede que no exista')
+                return
+            
+            
+            
+            self.reply(u, c, 'INPUT USER: '+str(user_ajeno.uname)+' ('+str(sid)+')')
+            # Si el usuario ajeno, no ha hecho ningún video aún, se le notificará
+            if user_ajeno.get_len_videos() == 0:
+                self.reply(u, c, 'no input yet')
+                return
+            ret = ''
+            i = 1
+            # Se va a recorrer la lista de videos puntuados por el usuario ajeno y se mostrarán sus puntuaciones y la fecha en la que fue evaluado cada video
+            #for k, v in sorted(user.input.items()):
+            for k, v in user_ajeno.input.items():
+                if k.endswith('D'):
+                    ret += str(i) + '. VIDEO ' + str(k.split('/')[1].split('.')[0]) + 'D' + ' --- DATOS: ' + str(v) + '\n'
+                else:
+                    ret += str(i) + '. VIDEO ' + str(k.split('/')[1].split('.')[0]) + ' --- DATOS: ' + str(v) + '\n'
+                i+=1
+            
+            # Si el archivo no existe, se crea uno y el input del usuario es escrito en él
+            user_file = "send_input_"+str(sid)+".txt"
+            # Se crea el archivo
+            if not os.path.isfile(user_file):
+                with open(user_file, 'w+') as file:
+                    # Se añade el mensaje al archivo
+                    file.write(ret)
+                    # Se cierra el flujo
+                    file.close()
+            else:
+                self.reply(u, c, 'Document already exists')
+            
+            # Se envía el archivo
+            c.bot.send_document(chat_id=u.message.chat_id, document=open('send_input_'+str(sid)+'.txt', 'rb'))
+            # Se elimina el archivo
+            os.remove("send_input_"+str(sid)+".txt")
+            
+            
+                    
 ########################################################################## FIN comandos ########################################
 
 #############################################################################################################
