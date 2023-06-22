@@ -27,6 +27,7 @@ for user in users:
 			for d in unlabelled_data:
 				d['label_Q1'] = labels['users'][user].input[fl][0]
 				d['label_Q2'] = labels['users'][user].input[fl][1]
+				d['label_Q3'] = labels['users'][user].input[fl][2]
 				labelled_data.insert(0, d)
 
 			file_list = [f for f in os.listdir(labelled_dir) if f.startswith(dataname)]

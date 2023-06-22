@@ -173,11 +173,12 @@ def initializeAlt1(data, w_segments=[]):
     dst_nodes = []  # List to store destiny nodes
 
     if 'label_Q1' in data.keys():
-        labels = np.array([float(data['label_Q1']), float(data['label_Q2'])])
+        labels = np.array([float(data['label_Q1']), float(data['label_Q2']),float(data['label_Q3'])])
     else:
-        labels = np.array([0, 0])
+        labels = np.array([0, 0, 0])
     labels[0] = labels[0] / 100.
     labels[1] = labels[1] / 100.
+    labels[2] = labels[2] / 100.
 
     # room (id 0)
     room_id = 0

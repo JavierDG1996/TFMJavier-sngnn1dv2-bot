@@ -319,7 +319,7 @@ if __name__ == '__main__':
                          epochs=1000,
                          patience=6,
                          batch_size=31,  # 40,
-                         num_classes=2,
+                         num_classes=3,
                          num_hidden=[25, 20, 20, 15, 10, 3],
                          heads=[15, 15, 10, 8, 8, 6],
                          residual=False,
