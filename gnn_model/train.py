@@ -119,11 +119,14 @@ def main(training_file, dev_file, test_file, graph_type=None, net=None, epochs=N
     # create the dataset
     time_dataset_a = time.time()
     print('Loading training set...')
-    train_dataset = socnav.SocNavDataset(training_file, mode='train', alt=graph_type, raw_dir='raw_data')
+    #train_dataset = socnav.SocNavDataset(training_file, mode='train', alt=graph_type, raw_dir='raw_data')
+    train_dataset = socnav.SocNavDataset(training_file, mode='train', alt=graph_type, raw_dir='.')
     print('Loading dev set...')
-    valid_dataset = socnav.SocNavDataset(dev_file, mode='valid', alt=graph_type, raw_dir='raw_data')
+    #valid_dataset = socnav.SocNavDataset(dev_file, mode='valid', alt=graph_type, raw_dir='raw_data')
+    valid_dataset = socnav.SocNavDataset(dev_file, mode='valid', alt=graph_type, raw_dir='.')
     print('Loading test set...')
-    test_dataset = socnav.SocNavDataset(test_file, mode='valid', alt=graph_type, raw_dir='raw_data')
+    #test_dataset = socnav.SocNavDataset(test_file, mode='valid', alt=graph_type, raw_dir='raw_data')
+    test_dataset = socnav.SocNavDataset(test_file, mode='valid', alt=graph_type, raw_dir='.')
     print('Done loading files')
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, collate_fn=collate)
     valid_dataloader = DataLoader(valid_dataset, batch_size=batch_size, collate_fn=collate)
@@ -150,7 +153,7 @@ def main(training_file, dev_file, test_file, graph_type=None, net=None, epochs=N
     # define the model
     model = SELECT_GNN(num_features=num_feats,
                        num_edge_feats=num_edge_feats,
-                       n_classes=2,
+                       n_classes=3,
                        num_hidden=num_hidden,
                        gnn_layers=gnn_layers,
                        dropout=in_drop,

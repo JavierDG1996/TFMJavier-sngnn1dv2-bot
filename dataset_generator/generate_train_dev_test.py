@@ -36,9 +36,9 @@ for out_filename, split in splits:
     print(out_filename, len(to_add))
     out_file = open(out_filename, 'w')
     for i in to_add:
-        if os.path.exists(i.split('.')[0] + '__Q1.png'):
-            line_text = i+'\n'
-            out_file.write(line_text)
+        #if os.path.exists(i.split('.')[0] + '__Q1.png'):
+        line_text = i+'\n'
+        out_file.write(line_text)
     out_file.close()
 
 
