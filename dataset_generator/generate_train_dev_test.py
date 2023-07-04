@@ -36,7 +36,11 @@ for out_filename, split in splits:
     print(out_filename, len(to_add))
     out_file = open(out_filename, 'w')
     for i in to_add:
+<<<<<<< HEAD
         # if os.path.exists(i.split('.')[0] + '__Q1.png'):
+=======
+        #if os.path.exists(i.split('.')[0] + '__Q1.png'):
+>>>>>>> 076f9401c2df16c9a3d6a06705ec50fc2df5968a
         line_text = i+'\n'
         out_file.write(line_text)
     out_file.close()
