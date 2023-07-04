@@ -2,6 +2,10 @@ import pickle
 import os, sys
 import json
 
+#sys.path.insert(0, '/home/robolab/Desarrollo/TFM_Javier_Duran/TFMJavier-sngnn1dv2-bot')
+
+#import user
+
 if len(sys.argv)<3:
 	print(f'USAGE: python3 {sys.argv[0]} bot_database.db unlabelled_data_directory labelled_data_directory')
 	exit()
