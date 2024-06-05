@@ -46,7 +46,7 @@ for user in users:
 # 			data[fs].append(-1)
 	
 df = pd.DataFrame(data, index = final_samples)
-print(df)
+print(df.to_string())
 # print(len(final_samples))
 exit()
 
