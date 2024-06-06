@@ -1,7 +1,10 @@
 import pickle
 import os, sys
+import json
+import numpy as np
 from sklearn import metrics as sk
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 labels = pickle.load(open(sys.argv[1], 'rb'), fix_imports=True)
@@ -37,16 +40,48 @@ for user in users:
 			data[user].append(-1)
 
 
-# for s, fs in zip(samples, final_samples):
-# 	data[fs] = []
-# 	for user in users:
-# 		if s in labels['users'][user].input.keys():
-# 			data[fs].append(labels['users'][user].input[s][0])
-# 		else:
-# 			data[fs].append(-1)
-	
-df = pd.DataFrame(data, index = final_samples)
-print(df.to_string())
+jsons_dir = "./trajectory_dataset_with_visible_human_goals/"
+jsons_files = {}
+for s in final_samples:
+	file = os.path.join(jsons_dir, s+'.json')
+	if os.path.exists(file):
+		jsons_files[s] = file
+	else:
+		print('The file {0} does not exist'.format(file))
+		exit()
+
+sngnn_values = {}
+mean_sngnn = []
+max_sngnn = []
+min_sngnn = []
+for s in jsons_files:
+	with open(jsons_files[s], 'r') as f:
+		jseq = json.load(f)	
+		sngnn_values[s] = []
+		for d in jseq["sequence"]:
+			sngnn_values[s].append(d["SNGNN"]*100)
+		
+		mean_sngnn.append(np.mean(np.array(sngnn_values[s])))
+		max_sngnn.append(np.max(np.array(sngnn_values[s])))
+		min_sngnn.append(np.min(np.array(sngnn_values[s])))
+
+data['sngnn_mean'] = mean_sngnn
+data['sngnn_min'] = min_sngnn
+data['sngnn_max'] = max_sngnn
+
+
+
+# print(jsons_files)
+# for file in os.listdir(path):
+# 	if os.path.isfile(os.path.join(jsons_dir, file)) and file.endswith('json')
+
+
+
+df = pd.DataFrame(data) #, index = final_samples)
+# print(df.to_string())
+df[0:20].plot(y=list([773490016])+['sngnn_mean', 'sngnn_max', 'sngnn_min'], kind = "bar")
+plt.show()
+
 # print(len(final_samples))
 exit()
 
